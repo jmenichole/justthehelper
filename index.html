@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JustTheBuilder — AI-Powered Discord Server Setup</title>
+  <meta name="description" content="Automate your entire Discord server setup using advanced AI. Generate channels, roles, custom rules, FAQs, and welcome screens in under a minute.">
+  
+  <!-- SEO Tags -->
+  <meta property="og:title" content="JustTheBuilder — AI-Powered Discord Server Setup">
+  <meta property="og:description" content="Build your perfect Discord server in under a minute using advanced AI. Channels, roles, permissions, and copywriting handled automatically.">
+  <meta property="og:image" content="./assets/logo.png">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* --- CSS Reset & Custom Variables --- */
+    :root {
+      --bg-dark: #09090b;
+      --bg-card: rgba(17, 17, 19, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --color-gold: #ffd700;
+      --color-gold-glow: rgba(255, 215, 0, 0.15);
+      --color-purple: #9b59b6;
+      --color-purple-glow: rgba(155, 89, 182, 0.15);
+      --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    /* --- Custom Scrollbar --- */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--color-gold);
+    }
+
+    /* --- Layout Components --- */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 10;
+    }
+
+    header {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border-color);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(9, 9, 11, 0.8);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      border: 1px solid var(--color-gold);
+      box-shadow: 0 0 10px var(--color-gold-glow);
+    }
+
+    .brand span {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff, var(--color-gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    nav {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: var(--transition-smooth);
+    }
+
+    nav a:hover {
+      color: var(--color-gold);
+    }
+
+    /* --- Buttons --- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: var(--transition-smooth);
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-gold), #e6b800);
+      color: #000000;
+      box-shadow: 0 4px 15px var(--color-gold-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    /* --- Hero Section --- */
+    .hero {
+      padding: 180px 0 100px;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Background Gradients */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--color-gold-glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .hero h1 {
+      font-size: 3.5rem;
+      line-height: 1.15;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #ffffff 40%, var(--color-gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-ctas {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .hero-logo-showcase {
+      display: inline-block;
+      position: relative;
+      margin-top: 24px;
+    }
+
+    .hero-logo-showcase img {
+      width: 140px;
+      height: 140px;
+      border-radius: 28px;
+      border: 2px solid var(--color-gold);
+      box-shadow: 0 0 30px var(--color-gold-glow);
+      transition: var(--transition-smooth);
+    }
+
+    .hero-logo-showcase img:hover {
+      transform: scale(1.05) rotate(2deg);
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+    }
+
+    /* --- Features Section --- */
+    .features {
+      padding: 80px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .section-title h2 {
+      font-size: 2.25rem;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff, var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .grid-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 32px;
+      transition: var(--transition-smooth);
+      backdrop-filter: blur(8px);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 215, 0, 0.3);
+      box-shadow: 0 10px 30px rgba(255, 215, 0, 0.03);
+    }
+
+    .feature-icon {
+      font-size: 1.75rem;
+      color: var(--color-gold);
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* --- Pricing Section --- */
+    .pricing {
+      padding: 80px 0;
+      border-top: 1px solid var(--border-color);
+      background: radial-gradient(circle at 10% 50%, var(--color-purple-glow) 0%, transparent 40%);
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(8px);
+      transition: var(--transition-smooth);
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .pricing-card.premium-glow {
+      border-color: rgba(155, 89, 182, 0.4);
+      box-shadow: 0 10px 40px rgba(155, 89, 182, 0.1);
+    }
+
+    .pricing-card.premium-glow:hover {
+      border-color: var(--color-purple);
+    }
+
+    .badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: var(--color-purple);
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pricing-header h3 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+
+    .pricing-header img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin: 16px 0;
+      border: 1px solid var(--border-color);
+      transition: var(--transition-smooth);
+    }
+
+    .pricing-card:hover .pricing-header img {
+      transform: scale(1.02);
+    }
+
+    .price {
+      font-size: 2.25rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      margin-bottom: 20px;
+      color: var(--text-main);
+    }
+
+    .price span {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .pricing-benefits {
+      list-style: none;
+      margin-bottom: 32px;
+      flex-grow: 1;
+    }
+
+    .pricing-benefits li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .pricing-benefits li i {
+      color: var(--color-gold);
+    }
+
+    .pricing-card.premium-glow .pricing-benefits li i {
+      color: var(--color-purple);
+    }
+
+    /* --- Support / CTA Section --- */
+    .support-cta {
+      padding: 100px 0;
+      text-align: center;
+      border-top: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .support-cta::before {
+      content: '';
+      position: absolute;
+      bottom: -10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, var(--color-purple-glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .support-cta h2 {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+    }
+
+    .support-cta p {
+      color: var(--text-muted);
+      max-width: 580px;
+      margin: 0 auto 36px;
+      font-size: 1.1rem;
+    }
+
+    /* --- Footer --- */
+    footer {
+      padding: 60px 0 30px;
+      border-top: 1px solid var(--border-color);
+      background-color: #050507;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-flex {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 32px;
+      margin-bottom: 40px;
+    }
+
+    .footer-brand h4 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      color: var(--text-main);
+      margin-bottom: 12px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 40px;
+    }
+
+    .footer-column h5 {
+      color: var(--text-main);
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .footer-column ul {
+      list-style: none;
+    }
+
+    .footer-column ul li {
+      margin-bottom: 8px;
+    }
+
+    .footer-column ul li a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: var(--transition-smooth);
+    }
+
+    .footer-column ul li a:hover {
+      color: var(--color-gold);
+    }
+
+    .copyright {
+      text-align: center;
+      padding-top: 30px;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      font-size: 0.8rem;
+    }
+
+    /* --- Responsive design --- */
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+      .hero-ctas {
+        flex-direction: column;
+        align-items: center;
+      }
+      .btn {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
+      }
+      .footer-flex {
+        flex-direction: column;
+        text-align: center;
+      }
+      .footer-links {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container header-flex">
+      <a href="#" class="brand">
+        <img src="./assets/logo.png" alt="JustTheBuilder Logo">
+        <span>JustTheBuilder</span>
+      </a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://discord.com/invite/1510851772758102137" target="_blank">Support</a>
+        <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-sm" style="padding: 8px 16px; font-size: 0.85rem;" target="_blank">Add to Discord</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-logo-showcase">
+        <img src="./assets/logo.png" alt="JustTheBuilder Bot Profile Icon">
+      </div>
+      <h1 style="margin-top: 24px;">Build Perfect Discord Servers<br>Using Advanced AI</h1>
+      <p>Automate your entire community infrastructure. Generate channels, precise permission overrides, matching roles, custom rules, FAQs, and welcome embeds in under a minute.</p>
+      
+      <div class="hero-ctas">
+        <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-primary" target="_blank">
+          <i class="fa-brands fa-discord"></i> Add to Discord
+        </a>
+        <a href="#features" class="btn btn-secondary">Learn More</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-title">
+        <h2>Smarter Community Setup</h2>
+        <p>Advanced automations that take the complexity out of building professional servers</p>
+      </div>
+
+      <div class="grid-features">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-brain"></i></div>
+          <h3>AI-Powered Architecture</h3>
+          <p>Tell the bot the vibe or topic of your server, and our AI design engine creates custom categories, matching role hierarchies, and channel arrangements tailored directly to you.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <h3>Secure Permissions</h3>
+          <p>No more manual lockout errors. The builder applies rigorous category and channel overrides, structuring read-only info areas, public chats, and locked staff forums flawlessly.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-pen-fancy"></i></div>
+          <h3>Custom Automated Copywriting</h3>
+          <p>Receive auto-written rules, welcome instructions, and matching FAQ embeds generated automatically based on your server niche. You edit post-build directly in Discord.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-file-export"></i></div>
+          <h3>Blueprint Portability</h3>
+          <p>Export your layout as a portable blueprint JSON, tweak it locally, import it to reconstruct setups instantly, or save configurations as reusable templates.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section class="pricing" id="pricing">
+    <div class="container">
+      <div class="section-title">
+        <h2>Pricing Packages</h2>
+        <p>Premium features built inside Discord's native monetization ecosystem</p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Package 1 -->
+        <div class="pricing-card">
+          <div class="pricing-header">
+            <h3>Basic Build Pack</h3>
+            <img src="./assets/basic_build_pack.png" alt="Basic Build Pack Asset Card">
+          </div>
+          <div class="price">$3.99<span> / one-time</span></div>
+          <ul class="pricing-benefits">
+            <li><i class="fa-solid fa-circle-check"></i> 1 complete premium server build</li>
+            <li><i class="fa-solid fa-circle-check"></i> AI custom channel & role generator</li>
+            <li><i class="fa-solid fa-circle-check"></i> Complete rules, FAQ & welcome embeds</li>
+            <li><i class="fa-solid fa-circle-check"></i> Precise, standard permission setups</li>
+            <li><i class="fa-solid fa-circle-check"></i> Limit: up to 20 channels per build</li>
+          </ul>
+          <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-secondary" target="_blank">Get Started</a>
+        </div>
+
+        <!-- Package 2 -->
+        <div class="pricing-card premium-glow">
+          <div class="badge">Most Popular</div>
+          <div class="pricing-header">
+            <h3 style="color: var(--color-purple);">Pro Builder</h3>
+            <img src="./assets/pro_builder_subscription.png" alt="Pro Builder Subscription Asset Card">
+          </div>
+          <div class="price">$6.99<span> / mo</span></div>
+          <ul class="pricing-benefits">
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> **Unlimited builds & rebuilds**</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Access all Fast-Track Presets</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Custom post-build embed edits</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Premium 💎 supporter role creation</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Unlimited categories & channels</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Upgraded, priority AI generation model</li>
+          </ul>
+          <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-primary" style="background: linear-gradient(135deg, var(--color-purple), #8e44ad); color: white; box-shadow: 0 4px 15px var(--color-purple-glow);" target="_blank">Subscribe Now</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Support CTA Section -->
+  <section class="support-cta">
+    <div class="container">
+      <h2>Need Help? Join Our Community</h2>
+      <p>Have questions about plans, looking for custom templates, or want to report a bug? Join the official JustTheBuilder Support Server to chat with our staff and community.</p>
+      <a href="https://discord.com/invite/1510851772758102137" class="btn btn-primary" target="_blank">
+        <i class="fa-solid fa-comments"></i> Join Support Server
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-flex">
+        <div class="footer-brand">
+          <h4>JustTheBuilder</h4>
+          <p>AI-Powered Discord Server setups in under a minute.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-column">
+            <h5>Product</h5>
+            <ul>
+              <li><a href="#features">Features</a></li>
+              <li><a href="#pricing">Pricing</a></li>
+            </ul>
+          </div>
+          <div class="footer-column">
+            <h5>Resources</h5>
+            <ul>
+              <li><a href="https://discord.com/invite/1510851772758102137" target="_blank">Support Server</a></li>
+              <li><a href="privacy.md" target="_blank">Privacy Policy</a></li>
+              <li><a href="terms.md" target="_blank">Terms of Service</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="copyright">
+        <p>&copy; 2026 JustTheBuilder. Powered by AI and Discord Monetization API.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
