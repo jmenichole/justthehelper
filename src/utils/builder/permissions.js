@@ -42,6 +42,18 @@ export async function applyChannelPermissions(channel, channelDef, roleMap) {
     // @everyone base
     const everyoneId = channel.guild.roles.everyone.id;
 
+    // Always allow the bot itself to ViewChannel, SendMessages, EmbedLinks, and ReadMessageHistory to guarantee it can post embeds
+    const meId = channel.guild.members.me.id;
+    overwrites.push({
+      id: meId,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.ReadMessageHistory
+      ]
+    });
+
     if (channelDef.private) {
       // Deny view for everyone unless explicitly allowed
       overwrites.push({ id: everyoneId, deny: [PermissionFlagsBits.ViewChannel] });
