@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — JustTheBuilder</title>
+  <meta name="description" content="Privacy Policy for JustTheBuilder. Read how we protect and use your data.">
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-dark: #09090b;
+      --bg-card: rgba(17, 17, 19, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --color-gold: #ffd700;
+      --color-gold-glow: rgba(255, 215, 0, 0.15);
+      --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    h1, h2, h3 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    /* --- Scrollbar --- */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--color-gold);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 120px 24px 80px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* --- Header --- */
+    header {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border-color);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(9, 9, 11, 0.8);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--color-gold);
+    }
+
+    .brand span {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff, var(--color-gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .back-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition-smooth);
+    }
+
+    .back-btn:hover {
+      color: var(--color-gold);
+    }
+
+    /* --- Content Box --- */
+    .content-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 48px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ffffff, var(--color-gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .meta {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 32px;
+      font-style: italic;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin: 32px 0 16px;
+      color: var(--color-gold);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 6px;
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    ul {
+      list-style-type: none;
+      margin-bottom: 20px;
+      padding-left: 8px;
+    }
+
+    ul li {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    ul li::before {
+      content: "•";
+      color: var(--color-gold);
+      font-weight: bold;
+    }
+
+    a {
+      color: var(--color-gold);
+      text-decoration: none;
+      transition: var(--transition-smooth);
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* --- Footer --- */
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border-color);
+      margin-top: 60px;
+    }
+
+    @media (max-width: 600px) {
+      .content-box {
+        padding: 24px;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-flex">
+      <a href="index.html" class="brand">
+        <img src="./assets/logo.png" alt="JustTheBuilder Logo">
+        <span>JustTheBuilder</span>
+      </a>
+      <a href="index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="container">
+    <div class="content-box">
+      <h1>Privacy Policy</h1>
+      <div class="meta">Last Updated: May 31, 2026</div>
+
+      <p>This Privacy Policy explains how **JustTheBuilder** (“we”, “our”) collects, processes, and uses information when you invite our bot to your server or use our services.</p>
+
+      <h2>1. What We Collect</h2>
+      <p>We only collect and process the minimum essential data required to perform automated server construction:</p>
+      <ul>
+        <li>Server name and unique Discord guild ID</li>
+        <li>Channel names, configurations, and channel IDs</li>
+        <li>Role names, hierarchy structures, and role IDs</li>
+        <li>Your unique Discord user ID (as the server owner initiating the command)</li>
+        <li>Automated setup interview answers provided during direct messages</li>
+      </ul>
+
+      <p><strong>We DO NOT collect or access:</strong></p>
+      <ul>
+        <li>Messages sent by other members in your servers</li>
+        <li>Server chat logs or message history</li>
+        <li>Private conversations outside direct setup interviews</li>
+        <li>Payment details or billing card information (all handled securely via Discord SKU checkout)</li>
+        <li>IP addresses or physical location data</li>
+      </ul>
+
+      <h2>2. AI Interactions</h2>
+      <p>We transmit your setup interview responses directly to our AI API provider (Groq) for the sole purpose of generating your customized server blueprint. We do not transmit any private server logs, chat messages, or metadata to the AI provider.</p>
+
+      <h2>3. What We Do Not Store</h2>
+      <p>We do not store server messages, user conversations, or personal details on our systems. Temporary logging generated during server building is completely anonymous and deleted at regular intervals.</p>
+
+      <h2>4. How We Use Your Data</h2>
+      <p>We use the data we retrieve exclusively to:</p>
+      <ul>
+        <li>Generate and deliver your tailored server blueprint</li>
+        <li>Build categories, channels, permissions, and roles inside your server</li>
+        <li>Support stability, error debugging, and general bot maintenance</li>
+      </ul>
+      <p>We do not sell, rent, or trade your data to third parties under any circumstances.</p>
+
+      <h2>5. Third-Party Services</h2>
+      <p>Our operations interact with the following third-party integrations:</p>
+      <ul>
+        <li>Discord API (for bot operations, events, and gateway connectivity)</li>
+        <li>Groq AI API (for text parsing and server layout generation)</li>
+        <li>Discord Monetization SKU Service (for billing and subscription entitlements processing)</li>
+      </ul>
+
+      <h2>6. Security</h2>
+      <p>We implement standard, secure measures to protect all credentials and temporary configurations, but no transaction or data exchange over the internet is completely secure.</p>
+
+      <h2>7. Children</h2>
+      <p>Our bot is designed for server administrators. In compliance with Discord Terms of Service, users must be at least 13 years old to utilize our services.</p>
+
+      <h2>8. Your Rights</h2>
+      <p>You maintain full control of your server. You can remove or kick the bot at any time, instantly revoking its access to your server data. If you wish to request deletion of any temporary configurations, please reach out to us.</p>
+
+      <h2>9. Contact</h2>
+      <p>For questions or requests regarding your data, contact us via email at: <a href="mailto:support@mischiefmanager.io">support@mischiefmanager.io</a>.</p>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2026 JustTheBuilder. Made for degens by degens.</p>
+    </footer>
+  </div>
+
+</body>
+</html>
