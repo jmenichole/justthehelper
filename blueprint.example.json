@@ -9,7 +9,7 @@
   "categories": {
     "SERVER INFO": [
       { "name": "welcome", "type": "text", "message": { "title": "Welcome", "body": "Welcome to the server!" }, "order": 0 },
-      { "name": "rules", "type": "text", "message": { "title": "Rules", "body": "1. Be kind\n2. No spam\n3. Respect staff" }, "permissionsPreset": "public-readonly", "order": 1 },
+      { "name": "rules", "type": "text", "message": { "title": "Rules", "body": "1. Be kind\n2. No spam\n3. Respect staff" }, "permissionsPreset": "public-readonly", "pinMessage": true, "order": 1 },
       { "name": "about", "type": "text", "message": { "title": "About", "body": "This is a builder test server." }, "order": 2 },
       { "name": "announcements", "type": "announcement", "permissionsPreset": "announcement-lock", "order": 3 }
     ],

@@ -31,7 +31,7 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
   const { channelMap } = await createChannels(guild, blueprint, roleMap, ownerUser);
 
   if (ownerUser) await sendProgress(ownerUser, "Posting about/rules/FAQ…");
-  await postMessages(guild, channelMap, blueprint);
+  const messageResults = await postMessages(guild, channelMap, blueprint, ownerUser);
 
   if (ownerUser) await sendProgress(ownerUser, "Applying community features…");
   await applyCommunityFeatures(guild, blueprint, channelMap);
@@ -48,9 +48,15 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
   logUsage(guild.id, { buildSeconds, categoryCount, channelCount, roleCount });
 
   if (ownerUser) {
+    const embedNote =
+      messageResults.failed.length > 0
+        ? `\n⚠️ ${messageResults.failed.length} embed(s) failed to post — see messages above.`
+        : messageResults.posted.length
+          ? `\n📝 Embeds posted: ${messageResults.posted.length}`
+          : "";
     await sendProgress(
       ownerUser,
-      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}\n\nRerun: /setup run\nSave as template: /setup save-template <name>`
+      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}${embedNote}\n\nRerun: /setup run\nSave as template: /setup save-template <name>`
     );
   }
 

@@ -34,6 +34,7 @@
         "name": "rules",
         "type": "text",
         "permissionsPreset": "public-readonly",
+        "pinMessage": true,
         "message": {
           "title": "💎 Server Guidelines",
           "body": "1. DYOR - Do Your Own Research\n2. No financial advice or guaranteed returns\n3. Verify all links before clicking\n4. No impersonation of team members or influencers\n5. Keep FUD and price discussion in designated channels\n6. Respect others' investment decisions\n\nStay safe, stay informed. NFA."
@@ -68,7 +69,7 @@
     ],
     "HELP": [
       {
-        "name": "faq",
+        "name": "help-faq",
         "type": "text"
       }
     ],

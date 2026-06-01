@@ -35,10 +35,13 @@ async function findAnnounceChannel(guild, client) {
   }
 
   // Fall back to any sendable text channel
-  return guild.channels.cache.find(
-    c => c.type === ChannelType.GuildText &&
-         ch?.permissionsFor?.(guild.members.me)?.has("SendMessages")
-  ) || null;
+  return (
+    guild.channels.cache.find(
+      (c) =>
+        c.type === ChannelType.GuildText &&
+        c.permissionsFor(guild.members.me)?.has("SendMessages")
+    ) || null
+  );
 }
 
 /**
@@ -47,7 +50,7 @@ async function findAnnounceChannel(guild, client) {
  * @returns {import('discord.js').EmbedBuilder}
  */
 function buildAnnounceEmbed(customMessage) {
-  const supportInvite = process.env.SUPPORT_SERVER_INVITE || "https://discord.gg/justthebuilder";
+  const supportInvite = process.env.SUPPORT_SERVER_INVITE || "https://discord.gg/NEePze3rZd";
 
   return new EmbedBuilder()
     .setColor(0xFFD700)

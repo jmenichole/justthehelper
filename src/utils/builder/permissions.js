@@ -43,7 +43,11 @@ export async function applyChannelPermissions(channel, channelDef, roleMap) {
     const everyoneId = channel.guild.roles.everyone.id;
 
     // Always allow the bot itself to ViewChannel, SendMessages, EmbedLinks, and ReadMessageHistory to guarantee it can post embeds
-    const meId = channel.guild.members.me.id;
+    const meId = channel.guild.members.me?.id ?? channel.client.user?.id;
+    if (!meId) {
+      log(`Permission overwrite skipped for ${channel.name}: bot member not resolved`);
+      return;
+    }
     overwrites.push({
       id: meId,
       allow: [

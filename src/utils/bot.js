@@ -93,7 +93,7 @@ client.on("entitlementCreate", async (entitlement) => {
   log(`New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}`);
   const basicPackId = process.env.PREMIUM_SKU_ID;
   const subId = process.env.SUBSCRIPTION_SKU_ID;
-  const supportLink = process.env.SUPPORT_SERVER_INVITE || "https://discord.gg/justthebuilder";
+  const supportLink = process.env.SUPPORT_SERVER_INVITE || "https://discord.gg/NEePze3rZd";
 
   let message = "";
   if (entitlement.skuId === basicPackId) {

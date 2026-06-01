@@ -64,6 +64,7 @@ const channelSchema = {
     threadsLocked: { type: "boolean" },
     defaultAutoArchiveDuration: { type: "integer", enum: [60, 1440, 4320, 10080] },
     message: channelMessageSchema,
+    pinMessage: { type: "boolean" },
     emoji: { type: "string" }
   },
   required: ["name"],

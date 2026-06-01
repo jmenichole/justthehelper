@@ -1,5 +1,6 @@
 import { ChannelType, PermissionFlagsBits } from "discord.js";
 import { applyChannelPermissions } from "./permissions.js";
+import { channelMapKey } from "./channelMap.js";
 import { log } from "../logger.js";
 import { sendProgress } from "../progress.js";
 
@@ -84,7 +85,7 @@ export async function createChannels(guild, blueprint, roleMap, progressUser) {
             createOpts.defaultAutoArchiveDuration = chDef.defaultAutoArchiveDuration;
           }
           const channel = await guild.channels.create(createOpts);
-          channelMap[originalName] = channel.id;
+          channelMap[channelMapKey(categoryName, originalName)] = channel.id;
           await applyChannelPermissions(channel, chDef, roleMap);
 
           // Thread lock - remove thread creation for everyone

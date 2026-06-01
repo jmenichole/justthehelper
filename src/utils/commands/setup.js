@@ -1,6 +1,7 @@
 import { runInterview } from "../ai/interviewFlow.js";
 import { log } from "../logger.js";
 import { applyBlueprint } from "../applyBlueprint.js";
+import { postMessagesToExistingChannels } from "../builder/messages.js";
 import { validateBlueprint } from "../ai/schemas.js";
 import { loadGuildConfig, saveGuildConfig } from "../storage/guildConfig.js";
 import fs from 'fs';
@@ -49,6 +50,11 @@ export const SetupCommandData = {
     { type: 1, name: "preview", description: "Preview last built blueprint JSON" },
     { type: 1, name: "export", description: "Export current server into a blueprint" },
     { type: 1, name: "reapply", description: "Reapply last stored blueprint" },
+    {
+      type: 1,
+      name: "post-messages",
+      description: "Post rules/about/FAQ embeds into existing channels (no recreate)"
+    },
     { type: 1, name: "import", description: "Import a blueprint JSON", options: [ { type: 11, name: 'file', description: 'Blueprint JSON file', required: true } ] },
     { type: 1, name: "save-template", description: "Save last blueprint as named template", options: [ { type: 3, name: 'name', description: 'Template name', required: true } ] },
     { 
@@ -328,7 +334,7 @@ export async function handleSetupInteraction(interaction, client) {
       saveGuildConfig(interaction.guild.id, { ...loadGuildConfig(interaction.guild.id), lastBlueprint: json, restoredAt: Date.now() });
 
       await interaction.followUp({ ephemeral: true, content: '✅ Backup verified. Restoring server structure...' });
-      const metrics = await applyBlueprint(interaction.guild, json, interaction.user);
+      const { metrics } = await applyBlueprint(interaction.guild, json, { ownerUser: interaction.user });
       await interaction.followUp({ ephemeral: true, content: `🎉 Restore complete.\nChannels: ${metrics.channelCount}\nRoles: ${metrics.roleCount}` });
     } catch (err) {
       log(`Restore failed: ${err.message}`);
@@ -367,12 +373,35 @@ export async function handleSetupInteraction(interaction, client) {
     if (!bp) return interaction.reply({ ephemeral: true, content: 'No stored blueprint. Run /setup run first or import/export.' });
     await interaction.reply({ ephemeral: true, content: 'Reapplying blueprint…' });
     try {
-      const metrics = await applyBlueprint(interaction.guild, bp, interaction.user);
+      const { metrics } = await applyBlueprint(interaction.guild, bp, { ownerUser: interaction.user });
       saveGuildConfig(interaction.guild.id, { ...cfg, lastReapply: Date.now(), lastMetrics: metrics });
       await interaction.followUp({ ephemeral: true, content: `Reapply complete. Channels: ${metrics.channelCount}, Roles: ${metrics.roleCount}` });
     } catch (err) {
       log('Reapply failed: ' + err.message);
       await interaction.followUp({ ephemeral: true, content: 'Reapply failed: ' + err.message });
+    }
+  } else if (sub === "post-messages") {
+    const filePath = path.resolve("data", "blueprints", `${interaction.guild.id}.json`);
+    const cfg = loadGuildConfig(interaction.guild.id);
+    const bp = cfg.lastBlueprint || (fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, "utf-8")) : null);
+    if (!bp) {
+      return interaction.reply({
+        ephemeral: true,
+        content: "No blueprint found. Run `/setup run` first or import a blueprint."
+      });
+    }
+    await interaction.reply({ ephemeral: true, content: "Posting embeds into existing channels…" });
+    try {
+      const results = await postMessagesToExistingChannels(interaction.guild, bp, interaction.user);
+      const summary =
+        results.posted.length > 0
+          ? `✅ Posted ${results.posted.length} embed(s)${results.pinned.length ? `, pinned ${results.pinned.length}` : ""}.`
+          : "No embeds were posted.";
+      const failNote = results.failed.length ? `\n⚠️ Failed: ${results.failed.join("; ")}` : "";
+      await interaction.followUp({ ephemeral: true, content: summary + failNote });
+    } catch (err) {
+      log(`post-messages failed: ${err.message}`);
+      await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` });
     }
   } else if (sub === 'import') {
     await interaction.reply({ ephemeral: true, content: 'Importing blueprint…' });

@@ -410,10 +410,11 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       
       let injectedRules = false;
       if (!rulesChannel) {
-        rulesChannel = { 
-          name: 'rules', 
-          type: 'text', 
-          permissionsPreset: 'public-readonly'
+        rulesChannel = {
+          name: "rules",
+          type: "text",
+          permissionsPreset: "public-readonly",
+          pinMessage: true
         };
         existing.unshift(rulesChannel);
       }
@@ -421,10 +422,11 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       if (!rulesChannel.message) {
         const rulesBody = ruleTemplate.rules.map((r, i) => `${i + 1}. ${r}`).join('\n') + 
           '\n\n' + ruleTemplate.footer;
-        rulesChannel.message = { 
-          title: ruleTemplate.title, 
+        rulesChannel.message = {
+          title: ruleTemplate.title,
           body: rulesBody
         };
+        rulesChannel.pinMessage = true;
         injectedRules = true;
       }
       if (!hasAbout) {
