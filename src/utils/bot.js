@@ -48,7 +48,7 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message, Partials.Reaction]
 });
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   log(`Ready as ${client.user.tag} | Guilds: ${client.guilds.cache.size}`);
 
   // Initialize early adopters list on first boot
