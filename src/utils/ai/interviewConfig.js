@@ -10,7 +10,8 @@ export const A = {
   PRIVATE: 7,
   EXTRAS: 8,
   TICKETS: 9,
-  COMMUNITY: 10
+  COMMUNITY: 10,
+  CUSTOM: 11
 };
 
 export const SUGGESTION_PACKS = {
@@ -128,6 +129,12 @@ export const INTERVIEW_QUESTIONS = [
     id: "community",
     text: "Mark server as Discord Community (welcome screen metadata)?",
     suggestions: SUGGESTION_PACKS.yesNo
+  },
+  {
+    id: "custom",
+    text:
+      "Anything else in plain English? (extra channels, rules, integrations, vibes — or type **skip**)",
+    suggestions: ["skip", "none"]
   }
 ];
 
@@ -144,7 +151,8 @@ export const PRESET_ANSWERS = {
     "staff-chat, mod-logs",
     "none",
     "yes",
-    "yes"
+    "yes",
+    "skip"
   ],
   crypto: [
     "A crypto/NFT project server for holders and roadmap updates.",
@@ -157,7 +165,8 @@ export const PRESET_ANSWERS = {
     "team-chat, mod-logs",
     "verified-only: holders-only",
     "yes",
-    "yes"
+    "yes",
+    "skip"
   ],
   content: [
     "A community for content creators and fans to share videos and streams.",
@@ -170,7 +179,8 @@ export const PRESET_ANSWERS = {
     "mod-chat, planning",
     "none",
     "yes",
-    "yes"
+    "yes",
+    "skip"
   ],
   professional: [
     "A professional network for business discussions and networking.",
@@ -183,7 +193,8 @@ export const PRESET_ANSWERS = {
     "admin-only, reports",
     "none",
     "no",
-    "yes"
+    "yes",
+    "skip"
   ],
   support: [
     "A product support server for helping users with issues.",
@@ -196,9 +207,16 @@ export const PRESET_ANSWERS = {
     "staff-area, ticket-logs",
     "none",
     "yes",
-    "yes"
+    "yes",
+    "skip"
   ]
 };
+
+export function formatCustomRequest(answer) {
+  const t = (answer || "").trim();
+  if (!t || /^skip$/i.test(t) || /^none$/i.test(t)) return "";
+  return t;
+}
 
 export function parseYes(answer) {
   const a = (answer || "").toLowerCase();
@@ -244,6 +262,7 @@ export function buildInterviewBrief(answers, guild) {
     `Extras (verified areas, links): ${answers[A.EXTRAS]}`,
     `Support ticket system: ${answers[A.TICKETS]}`,
     `Discord Community flag: ${answers[A.COMMUNITY]}`,
+    `Custom requests (natural language — honor when possible): ${formatCustomRequest(answers[A.CUSTOM]) || "(none)"}`,
     `---`,
     `Requirements:`,
     `- Output MUST include style.theme and style.emojiPrefix when branding is not skip.`,
@@ -252,6 +271,7 @@ export function buildInterviewBrief(answers, guild) {
     `- rules permissionsPreset: public-readonly; announcements permissionsPreset: announcement-lock.`,
     `- At least one general chat; staff private channels use staff-private or mods-only presets.`,
     `- Honor extras (verified-only channels, links in welcome/about bodies).`,
+    `- If Custom requests is not empty: add channels, topics, or embed copy exactly as described when schema allows.`,
     `- If tickets=yes: include create-ticket channel (public-readonly) and tickets config in blueprint.`,
     `- tickets object: { enabled: true, panelChannel: "create-ticket", categories: [{id,label,description,emoji}], staffRoles: [from roles list] }`
   ].join("\n");

@@ -141,6 +141,50 @@ export function logStaffSlashCommand(interaction) {
  * @param {import('discord.js').User} [ownerUser]
  * @param {Object} [blueprint]
  */
+/**
+ * Post-build survey result (bugs, missing features, praise).
+ * @param {import('discord.js').Client} client
+ * @param {{
+ *   guild: import('discord.js').Guild,
+ *   user: import('discord.js').User,
+ *   outcome: string,
+ *   details?: string,
+ *   preset?: string | null,
+ *   customRequest?: string | null,
+ *   metrics?: object | null
+ * }} data
+ */
+export function logStaffPostBuildSurvey(client, data) {
+  const { guild, user, outcome, details, preset, customRequest, metrics } = data;
+  const outcomeLabels = {
+    great: "⭐ Great",
+    good: "👍 Good (minor tweaks)",
+    issues: "⚠️ Missing / wrong layout",
+    bug: "🐛 Bug report",
+    skip: "Skipped"
+  };
+  const isProblem = outcome === "bug" || outcome === "issues";
+  const lines = [
+    `**Outcome:** ${outcomeLabels[outcome] || outcome}`,
+    preset ? `**Preset:** \`${preset}\`` : "**Preset:** custom interview",
+    customRequest && !/^skip$/i.test(customRequest)
+      ? `**Custom ask (interview):** ${customRequest.slice(0, 500)}`
+      : null,
+    details ? `**Feedback:** ${details.slice(0, 1500)}` : null,
+    metrics
+      ? `**Build:** ${metrics.buildSeconds}s · ${metrics.categoryCount} cat · ${metrics.channelCount} ch · ${metrics.roleCount} roles`
+      : null
+  ].filter(Boolean);
+
+  logStaffUsage(client, {
+    action: isProblem ? "📋 Post-build survey — needs attention" : "📋 Post-build survey",
+    guild,
+    user,
+    color: isProblem ? 0xe74c3c : outcome === "great" ? 0x57f287 : 0x3498db,
+    detail: lines.join("\n")
+  });
+}
+
 export function logStaffBuildComplete(client, guild, metrics, ownerUser, blueprint) {
   const preset = blueprint?.lastPreset ? `preset \`${blueprint.lastPreset}\`` : "custom interview";
   const tickets = blueprint?.tickets?.enabled ? " · tickets on" : "";

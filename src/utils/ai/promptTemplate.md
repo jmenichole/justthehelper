@@ -34,6 +34,7 @@ Rules:
 10. announcements channel: type announcement + permissionsPreset "announcement-lock".
 11. voice-lounge: type voice when interview requests voice.
 12. Honor extras: ticket channels, verified-only presets, links woven into welcome/about body text.
-13. Avoid trailing commas; valid JSON only.
+13. If interview includes Custom requests (natural language), implement extra channels/roles/embed text as described.
+14. Avoid trailing commas; valid JSON only.
 
 Output: A single JSON object matching the schema.

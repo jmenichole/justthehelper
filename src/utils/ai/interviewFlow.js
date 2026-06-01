@@ -8,9 +8,11 @@ import {
   PRESET_ANSWERS,
   SUGGESTION_PACKS,
   buildInterviewBrief,
+  formatCustomRequest,
   mapRuleTemplateChoice,
   parseYes
 } from "./interviewConfig.js";
+import { runPostBuildSurvey } from "./postBuildSurvey.js";
 import {
   applyBranding,
   applyExtras,
@@ -142,13 +144,18 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       await dm.send(
         "🔨 Building now — roles → channels → **embeds** (welcome / rules / FAQ / tickets) → **pin rules** → **ticket category menu**…"
       );
-      await applyBlueprint(guild, blueprint, { ownerUser: user });
+      const { metrics } = await applyBlueprint(guild, blueprint, { ownerUser: user });
       saveGuildConfig(guild.id, {
         ...loadGuildConfig(guild.id),
         lastBlueprint: blueprint,
         tickets: blueprint.tickets,
         lastPreset: "justthebuilder",
         builtAt: Date.now()
+      });
+      await runPostBuildSurvey(user, guild, client, {
+        preset: "justthebuilder",
+        customRequest: null,
+        metrics
       });
       return true;
     } catch (err) {
@@ -165,7 +172,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
 
   await dm.send(
     [
-      "👋 **JustTheBuilder setup interview** (~10 questions)",
+      "👋 **JustTheBuilder setup interview** (~12 questions)",
       "Answer in DMs. Pick a **number** from suggestions or type your own.",
       "Goal: **one run** → channels, roles, permissions, and embeds."
     ].join("\n")
@@ -363,7 +370,12 @@ export async function runInterview(user, guild, client, preset = null, isPremium
 
   await user.send("✨ Building your server now (channels → embeds → finish)…");
   try {
-    await applyBlueprint(guild, blueprint, { ownerUser: user });
+    const { metrics } = await applyBlueprint(guild, blueprint, { ownerUser: user });
+    await runPostBuildSurvey(user, guild, client, {
+      preset: preset || blueprint.lastPreset || null,
+      customRequest: formatCustomRequest(answers[A.CUSTOM]),
+      metrics
+    });
     return true;
   } catch (err) {
     log(`Build failed: ${err.message}`);
