@@ -3,6 +3,7 @@ import { log } from "../logger.js";
 import { applyBlueprint } from "../applyBlueprint.js";
 import { postMessagesToExistingChannels } from "../builder/messages.js";
 import { loadGuildConfig, saveGuildConfig } from "../storage/guildConfig.js";
+import { getEarlyAdopterStatus } from "../earlyAdopters.js";
 import fs from 'fs';
 import path from 'path';
 import {
@@ -184,22 +185,9 @@ export async function handleSetupInteraction(interaction, client) {
     : null;
   const hasBasicPack = !!basicPackEntitlement;
 
-  // Check if early adopter bypass is active
-  let isEarlyAdopter = false;
-  let hasFreeBuildLeft = false;
-  const earlyAdoptersPath = path.resolve('data', 'early_adopters.json');
-  if (fs.existsSync(earlyAdoptersPath)) {
-    try {
-      const adopters = JSON.parse(fs.readFileSync(earlyAdoptersPath, 'utf-8'));
-      if (Array.isArray(adopters) && adopters.includes(interaction.guild.id)) {
-        isEarlyAdopter = true;
-        const cfg = loadGuildConfig(interaction.guild.id);
-        if (!cfg.earlyAdopterFreeBuildUsed) {
-          hasFreeBuildLeft = true;
-        }
-      }
-    } catch {}
-  }
+  const earlyStatus = getEarlyAdopterStatus(interaction.guild.id);
+  const isEarlyAdopter = earlyStatus.onList;
+  const hasFreeBuildLeft = earlyStatus.hasFreeBuildLeft;
 
   // isPremium = has subscription OR has unconsumed basic build pack OR has early adopter free build left
   const isPremium = hasSub || hasBasicPack || hasFreeBuildLeft;

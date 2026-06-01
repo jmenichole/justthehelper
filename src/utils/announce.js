@@ -1,3 +1,4 @@
+// Slash registration disabled; kept for possible future use.
 import {
   SlashCommandBuilder,
   EmbedBuilder,

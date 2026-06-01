@@ -67,12 +67,11 @@ client.once("clientReady", async () => {
 
   // Register slash commands globally
   try {
-    const { AnnounceCommandData } = await import("./announce.js");
     const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
     await rest.put(Routes.applicationCommands(client.user.id), {
-      body: [SetupCommandData, AnnounceCommandData]
+      body: [SetupCommandData]
     });
-    log("Registered /setup and /announce commands");
+    log("Registered /setup command");
   } catch (err) {
     log(`Command registration failed: ${err.message}`);
   }
@@ -84,11 +83,9 @@ client.on("interactionCreate", async (i) => {
   const { handleTicketInteraction } = await import("./tickets/handler.js");
   if (await handleTicketInteraction(i, client)) return;
 
-  const { handleAnnounceInteraction } = await import("./announce.js");
   handleSetupInteraction(i, client);
   handleOnboardingComponent(i, client);
   handlePostBuildButtons(i, client);
-  handleAnnounceInteraction(i, client);
 });
 
 // DM buyers immediately when a new purchase comes in while the bot is online
