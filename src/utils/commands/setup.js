@@ -2,11 +2,17 @@ import { runInterview } from "../ai/interviewFlow.js";
 import { log } from "../logger.js";
 import { applyBlueprint } from "../applyBlueprint.js";
 import { postMessagesToExistingChannels } from "../builder/messages.js";
-import { validateBlueprint } from "../ai/schemas.js";
 import { loadGuildConfig, saveGuildConfig } from "../storage/guildConfig.js";
 import fs from 'fs';
 import path from 'path';
-import { ChannelType, PermissionFlagsBits } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  ComponentType,
+  PermissionFlagsBits
+} from "discord.js";
 
 // In-memory cooldown stores
 const serverCooldowns = new Map(); // guildId -> timestamp
@@ -21,7 +27,7 @@ const USER_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
  */
 export const SetupCommandData = {
   name: "setup",
-  description: "Run or reset the automated server builder.",
+  description: "Build or manage your server with JustTheBuilder.",
   options: [
     { 
       type: 1, 
@@ -44,23 +50,16 @@ export const SetupCommandData = {
         }
       ]
     },
-    { type: 1, name: "reset", description: "Reset server structure (DANGEROUS)" },
-    { type: 1, name: "nuke", description: "☢️ Backup & Delete ALL channels (DANGEROUS)" },
-    { type: 1, name: "restore-backup", description: "⚠️ Restore server from a backup file (Immediate Build)", options: [ { type: 11, name: 'file', description: 'Backup JSON file', required: true } ] },
-    { type: 1, name: "preview", description: "Preview last built blueprint JSON" },
-    { type: 1, name: "export", description: "Export current server into a blueprint" },
-    { type: 1, name: "reapply", description: "Reapply last stored blueprint" },
+    { type: 1, name: "nuke", description: "☢️ Backup to DM, then delete ALL channels (DANGEROUS)" },
     {
       type: 1,
       name: "post-messages",
-      description: "Post rules/about/FAQ embeds into existing channels (no recreate)"
+      description: "Post rules/about/FAQ embeds into existing channels"
     },
-    { type: 1, name: "import", description: "Import a blueprint JSON", options: [ { type: 11, name: 'file', description: 'Blueprint JSON file', required: true } ] },
-    { type: 1, name: "save-template", description: "Save last blueprint as named template", options: [ { type: 3, name: 'name', description: 'Template name', required: true } ] },
-    { 
-      type: 1, 
-      name: "edit-channel", 
-      description: "Edit a channel's description/topic or pin/unpin a message", 
+    {
+      type: 1,
+      name: "edit-channel",
+      description: "Set channel topic or pin/unpin a message",
       options: [
         { type: 7, name: 'channel', description: 'The channel to edit', required: true },
         { type: 3, name: 'topic', description: 'New topic/description for the channel', required: false },
@@ -83,30 +82,48 @@ export const SetupCommandData = {
 };
 
 /**
- * Ask the invoker to type CONFIRM within 30s for destructive reset.
+ * Ephemeral confirm via buttons (reactions do not work on ephemeral messages).
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * @param {{ title: string, detail?: string }} opts
  * @returns {Promise<boolean>}
  */
-async function confirmReset(interaction) {
+async function confirmDestructive(interaction, { title, detail = "" }) {
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("setup_confirm_yes")
+      .setLabel("Confirm")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("setup_confirm_no")
+      .setLabel("Cancel")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
   await interaction.reply({
     ephemeral: true,
-    content: "React with ✅ within 30s to confirm, or ❌ to cancel."
+    content: `⚠️ **${title}**\n${detail}\n\nPress **Confirm** within 30 seconds, or **Cancel**.`,
+    components: [row]
   });
-  const confirmMsg = await interaction.fetchReply();
+
   try {
-    await confirmMsg.react('✅');
-    await confirmMsg.react('❌');
-  } catch {}
-  try {
-    const collected = await confirmMsg.awaitReactions({
-      filter: (reaction, user) =>
-        ['✅', '❌'].includes(reaction.emoji.name) && user.id === interaction.user.id,
-      max: 1,
-      time: 30000,
-      errors: ['time']
+    const msg = await interaction.fetchReply();
+    const btn = await msg.awaitMessageComponent({
+      componentType: ComponentType.Button,
+      filter: (i) =>
+        i.user.id === interaction.user.id &&
+        (i.customId === "setup_confirm_yes" || i.customId === "setup_confirm_no"),
+      time: 30_000
     });
-    return collected.first()?.emoji.name === '✅';
+    const ok = btn.customId === "setup_confirm_yes";
+    await btn.update({
+      content: ok ? "✅ Confirmed. Working…" : "❌ Cancelled.",
+      components: []
+    });
+    return ok;
   } catch {
+    try {
+      await interaction.editReply({ content: "⏱️ Timed out — cancelled.", components: [] });
+    } catch {}
     return false;
   }
 }
@@ -272,16 +289,14 @@ export async function handleSetupInteraction(interaction, client) {
       log(`runInterview error: ${err.message}`);
       await interaction.followUp({ ephemeral: true, content: `❌ Something went wrong during setup: ${err.message}` });
     }
-  } else if (sub === "reset") {
-    const confirmed = await confirmReset(interaction);
-    if (!confirmed) return interaction.followUp({ ephemeral: true, content: "Reset cancelled." });
-    await interaction.followUp({ ephemeral: true, content: "Resetting server channels..." });
-    await wipeServer(interaction.guild);
-    await interaction.followUp({ ephemeral: true, content: "Server channels wiped." });
   } else if (sub === "nuke") {
-    const confirmed = await confirmReset(interaction);
-    if (!confirmed) return interaction.followUp({ ephemeral: true, content: "Nuke cancelled." });
-    
+    const confirmed = await confirmDestructive(interaction, {
+      title: "Delete ALL channels?",
+      detail:
+        "A JSON backup will be sent to your DMs first. Roles are kept so you are not locked out. Then run `/setup run` to rebuild."
+    });
+    if (!confirmed) return;
+
     await interaction.followUp({ ephemeral: true, content: "📦 Creating safety backup before nuke..." });
     
     try {
@@ -303,83 +318,10 @@ export async function handleSetupInteraction(interaction, client) {
 
     await interaction.followUp({ ephemeral: true, content: "☢️ **NUKING CHANNELS**..." });
     await wipeServer(interaction.guild);
-    await interaction.followUp({ ephemeral: true, content: "💀 Nuke complete. Server is clean." });
-  } else if (sub === "restore-backup") {
-    const attachment = interaction.options.getAttachment('file');
-    if (!attachment) return interaction.reply({ ephemeral: true, content: 'Attach a backup JSON file.' });
-    
-    await interaction.reply({ ephemeral: true, content: '⏳ Analyzing backup file...' });
-
-    try {
-      const text = await fetch(attachment.url).then(r => r.text());
-      const json = JSON.parse(text);
-
-      // Compatibility: Convert Array categories (from export) to Object (for blueprint)
-      if (Array.isArray(json.categories)) {
-        const catObj = {};
-        json.categories.forEach(c => {
-          if (c.name) catObj[c.name] = c.channels || [];
-        });
-        json.categories = catObj;
-      }
-
-      const validation = validateBlueprint(json);
-      if (!validation.valid) {
-        return interaction.followUp({ ephemeral: true, content: '❌ Invalid blueprint structure: ' + validation.errors.map(e => `${e.instancePath} ${e.message}`).join('; ') });
-      }
-
-      const bpDir = path.resolve('data', 'blueprints');
-      if (!fs.existsSync(bpDir)) fs.mkdirSync(bpDir, { recursive: true });
-      fs.writeFileSync(path.join(bpDir, `${interaction.guild.id}.json`), JSON.stringify(json, null, 2));
-      saveGuildConfig(interaction.guild.id, { ...loadGuildConfig(interaction.guild.id), lastBlueprint: json, restoredAt: Date.now() });
-
-      await interaction.followUp({ ephemeral: true, content: '✅ Backup verified. Restoring server structure...' });
-      const { metrics } = await applyBlueprint(interaction.guild, json, { ownerUser: interaction.user });
-      await interaction.followUp({ ephemeral: true, content: `🎉 Restore complete.\nChannels: ${metrics.channelCount}\nRoles: ${metrics.roleCount}` });
-    } catch (err) {
-      log(`Restore failed: ${err.message}`);
-      return interaction.followUp({ ephemeral: true, content: `❌ Restore failed: ${err.message}` });
-    }
-  } else if (sub === "preview") {
-    try {
-      const filePath = path.resolve('data', 'blueprints', `${interaction.guild.id}.json`);
-      if (!fs.existsSync(filePath)) {
-        return interaction.reply({ ephemeral: true, content: 'No blueprint stored yet.' });
-      }
-      const json = fs.readFileSync(filePath, 'utf-8');
-      // Send pretty file
-      await interaction.reply({ ephemeral: true, content: 'Sending blueprint file…' });
-      await interaction.user.send({
-        content: 'Blueprint Preview:\n```json\n' + json + '\n```',
-        files: [ { attachment: Buffer.from(json), name: 'blueprint.json' } ]
-      });
-    } catch (err) {
-      log(`Preview failed: ${err.message}`);
-      return interaction.reply({ ephemeral: true, content: 'Failed to load blueprint.' });
-    }
-  } else if (sub === 'export') {
-    await interaction.reply({ ephemeral: true, content: 'Exporting guild…' });
-    const data = await exportGuild(interaction.guild);
-    const exportDir = path.resolve('data', 'exports');
-    if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
-    const filePath = path.join(exportDir, `${interaction.guild.id}-export.json`);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    saveGuildConfig(interaction.guild.id, { ...loadGuildConfig(interaction.guild.id), lastBlueprint: data, lastExport: Date.now() });
-    await interaction.followUp({ ephemeral: true, content: 'Export complete. DMing file.' });
-    await interaction.user.send({ content: 'Guild Export Blueprint', files: [ filePath ] });
-  } else if (sub === 'reapply') {
-    const cfg = loadGuildConfig(interaction.guild.id);
-    const bp = cfg.lastBlueprint;
-    if (!bp) return interaction.reply({ ephemeral: true, content: 'No stored blueprint. Run /setup run first or import/export.' });
-    await interaction.reply({ ephemeral: true, content: 'Reapplying blueprint…' });
-    try {
-      const { metrics } = await applyBlueprint(interaction.guild, bp, { ownerUser: interaction.user });
-      saveGuildConfig(interaction.guild.id, { ...cfg, lastReapply: Date.now(), lastMetrics: metrics });
-      await interaction.followUp({ ephemeral: true, content: `Reapply complete. Channels: ${metrics.channelCount}, Roles: ${metrics.roleCount}` });
-    } catch (err) {
-      log('Reapply failed: ' + err.message);
-      await interaction.followUp({ ephemeral: true, content: 'Reapply failed: ' + err.message });
-    }
+    await interaction.followUp({
+      ephemeral: true,
+      content: "💀 Nuke complete. Run `/setup run` (or `preset:justthetip` for this support layout) to rebuild."
+    });
   } else if (sub === "post-messages") {
     const filePath = path.resolve("data", "blueprints", `${interaction.guild.id}.json`);
     const cfg = loadGuildConfig(interaction.guild.id);
@@ -387,7 +329,7 @@ export async function handleSetupInteraction(interaction, client) {
     if (!bp) {
       return interaction.reply({
         ephemeral: true,
-        content: "No blueprint found. Run `/setup run` first or import a blueprint."
+        content: "No blueprint found. Run `/setup run` first."
       });
     }
     await interaction.reply({ ephemeral: true, content: "Posting embeds into existing channels…" });
@@ -402,44 +344,6 @@ export async function handleSetupInteraction(interaction, client) {
     } catch (err) {
       log(`post-messages failed: ${err.message}`);
       await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` });
-    }
-  } else if (sub === 'import') {
-    await interaction.reply({ ephemeral: true, content: 'Importing blueprint…' });
-    const attachment = interaction.options.getAttachment('file');
-    if (!attachment) return interaction.followUp({ ephemeral: true, content: 'Attach a blueprint JSON file.' });
-    try {
-      const text = await fetch(attachment.url).then(r => r.text());
-      const json = JSON.parse(text);
-      const valid = validateBlueprint(json);
-      if (!valid.valid) {
-        return interaction.followUp({ ephemeral: true, content: 'Validation errors: ' + valid.errors.map(e => `${e.instancePath} ${e.message}`).join('; ') });
-      }
-      const bpDir = path.resolve('data', 'blueprints');
-      if (!fs.existsSync(bpDir)) fs.mkdirSync(bpDir, { recursive: true });
-      fs.writeFileSync(path.join(bpDir, `${interaction.guild.id}.json`), JSON.stringify(json, null, 2));
-      saveGuildConfig(interaction.guild.id, { ...loadGuildConfig(interaction.guild.id), lastBlueprint: json, importedAt: Date.now() });
-      await interaction.followUp({ ephemeral: true, content: 'Blueprint imported. Use /setup reapply to build.' });
-    } catch (err) {
-      log('Import failed: ' + err.message);
-      return interaction.followUp({ ephemeral: true, content: 'Import failed: ' + err.message });
-    }
-  } else if (sub === 'save-template') {
-    const name = interaction.options.getString('name');
-    if (!name.match(/^[a-z0-9_-]{2,32}$/i)) {
-      return interaction.reply({ ephemeral: true, content: 'Template name must be 2-32 chars (alphanumeric, dash, underscore).' });
-    }
-    const cfg = loadGuildConfig(interaction.guild.id);
-    const bp = cfg.lastBlueprint;
-    if (!bp) return interaction.reply({ ephemeral: true, content: 'No blueprint stored yet to save.' });
-    const templatesDir = path.resolve('templates');
-    if (!fs.existsSync(templatesDir)) fs.mkdirSync(templatesDir, { recursive: true });
-    const filePath = path.join(templatesDir, `${name}.json`);
-    try {
-      fs.writeFileSync(filePath, JSON.stringify(bp, null, 2));
-      await interaction.reply({ ephemeral: true, content: `Template saved as ${name}.json` });
-    } catch (err) {
-      log('Template save failed: ' + err.message);
-      await interaction.reply({ ephemeral: true, content: 'Failed to save template.' });
     }
   } else if (sub === 'edit-channel') {
     const channel = interaction.options.getChannel('channel');
