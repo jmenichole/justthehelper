@@ -1,5 +1,6 @@
 import { A, parseYes, parseVoiceAnnounce } from "./interviewConfig.js";
 import { inferRuleTemplate, inferFaqTemplate } from "./ruleTemplates.js";
+import { buildTicketsConfigFromInterview } from "../tickets/config.js";
 
 function findInfoCategory(blueprint) {
   const names = Object.keys(blueprint.categories || {});
@@ -185,23 +186,6 @@ export function applyExtras(blueprint, answers) {
   const e = (answers[A.EXTRAS] || "").toLowerCase();
   if (!e || e === "none") return;
 
-  if (e.includes("ticket")) {
-    const cat = findOrCreateCategory(blueprint, /support|help|client/i, "SUPPORT");
-    if (!channelExists(blueprint, (ch) => /ticket/i.test(ch.name))) {
-      addChannel(blueprint, cat, {
-        name: "create-ticket",
-        type: "text",
-        message: {
-          title: "🎟️ Open a Support Ticket",
-          body:
-            "Need assistance with **billing**, **subscriptions**, or **custom configurations**?\n\n" +
-            "Our team is here to help!\n\n" +
-            "**Pro Builder** subscribers: use the **Open Support Ticket** button below."
-        }
-      });
-    }
-  }
-
   const verifiedMatch = answers[A.EXTRAS].match(/verified[- ]?only:\s*([^\n,]+)/i);
   if (verifiedMatch) {
     const chName = verifiedMatch[1].trim().toLowerCase().replace(/\s+/g, "-");
@@ -222,4 +206,31 @@ export function applyExtras(blueprint, answers) {
 export function applyInterviewMeta(blueprint, guild, answers) {
   blueprint.name = guild.name;
   blueprint.community = parseYes(answers[A.COMMUNITY]);
+}
+
+/**
+ * Configure ticket system on blueprint and ensure #create-ticket exists.
+ */
+export function applyTicketsToBlueprint(blueprint, answers, { categoriesAnswer = "", preset = null } = {}) {
+  const tickets = buildTicketsConfigFromInterview(answers, A, {
+    supportStyle: preset === "support",
+    categoriesAnswer
+  });
+  blueprint.tickets = tickets;
+  if (!tickets.enabled) return;
+
+  const cat = findOrCreateCategory(blueprint, /support|help|client|ticket/i, "SUPPORT");
+  if (!channelExists(blueprint, (ch) => /create-ticket|open-ticket/i.test(ch.name))) {
+    addChannel(blueprint, cat, {
+      name: "create-ticket",
+      type: "text",
+      permissionsPreset: "public-readonly",
+      message: {
+        title: "🎟️ Open a Support Ticket",
+        body:
+          "Need help? **Anyone** can open a private ticket.\n\n" +
+          "Choose a **category** below — our staff will be notified automatically."
+      }
+    });
+  }
 }

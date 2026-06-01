@@ -15,6 +15,7 @@ import {
   applyBranding,
   applyExtras,
   applyInterviewMeta,
+  applyTicketsToBlueprint,
   ensureVoiceAndAnnouncements,
   injectInfoEmbeds
 } from "./interviewFinalize.js";
@@ -140,6 +141,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
   }
 
   const answers = [];
+  let ticketCategoriesAnswer = "";
   const dm = await user.createDM();
   let selectedRuleTemplate = preset && PRESET_ANSWERS[preset] ? preset : null;
 
@@ -153,6 +155,12 @@ export async function runInterview(user, guild, client, preset = null, isPremium
 
   if (preset && PRESET_ANSWERS[preset]) {
     answers.push(...PRESET_ANSWERS[preset]);
+    if (parseYes(answers[A.TICKETS])) {
+      ticketCategoriesAnswer =
+        preset === "support"
+          ? "Help, Billing, Bug Report, Feature Request"
+          : "General Help, Report, Billing, Technical";
+    }
     await user.send(`⚡ **Fast-Track**: Using **${preset}** defaults…`);
   } else {
     async function ask(questionObj) {
@@ -208,6 +216,13 @@ export async function runInterview(user, guild, client, preset = null, isPremium
           answers[A.EXTRAS] = `Links: ${linksDetail}`;
         }
       }
+
+      if (q.id === "tickets" && parseYes(a)) {
+        ticketCategoriesAnswer = await ask({
+          text: "Ticket categories (comma-separated)? Staff will be pinged based on your roles.",
+          suggestions: SUGGESTION_PACKS.ticketCategories
+        });
+      }
     }
   }
 
@@ -245,6 +260,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
   applyInterviewMeta(blueprint, guild, answers);
   ensureVoiceAndAnnouncements(blueprint, answers);
   applyExtras(blueprint, answers);
+  applyTicketsToBlueprint(blueprint, answers, { categoriesAnswer: ticketCategoriesAnswer, preset });
 
   const FREE_LIMIT = 20;
   if (!isPremium && blueprint.categories) {

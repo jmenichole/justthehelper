@@ -51,8 +51,12 @@ export async function postMessages(guild, channelMap, blueprint, ownerUser) {
 
         if (/create-ticket|open-ticket|support-ticket/i.test(chDef.name || "")) {
           try {
-            const { ensureTicketPanel } = await import("../tickets/handler.js");
-            await ensureTicketPanel(channel, guild.client);
+            const { getTicketConfig } = await import("../tickets/config.js");
+            const { deployTicketPanelForGuild } = await import("../tickets/handler.js");
+            const tcfg = blueprint.tickets?.enabled ? blueprint.tickets : getTicketConfig(guild.id);
+            if (tcfg?.enabled) {
+              await deployTicketPanelForGuild(guild, guild.client, tcfg);
+            }
           } catch (panelErr) {
             log(`Ticket panel in ${label}: ${panelErr.message}`);
           }

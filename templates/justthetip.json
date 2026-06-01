@@ -60,7 +60,7 @@
         "type": "text",
         "message": {
           "title": "❓ Frequently Asked Questions",
-          "body": "**Q: How do I invite the bot to my server?**\nA: You can invite it directly from our bot profile on Discord, or ask for the invite link in <#general>.\n\n**Q: What is the Basic Build Pack?**\nA: The Basic Build Pack is a one-time purchase ($3.99) that grants you **one complete premium server build** (unlimited channels, roles, full AI customization, auto-written rules, and FAQs).\n\n**Q: What is the Pro Builder subscription?**\nA: The Pro Builder subscription ($6.99/mo) unlocks **unlimited server builds and rebuilds**, all **Fast-Track Presets**, **private support tickets** in this server (#create-ticket), and post-build embed edits via `/setup edit-message`.\n\n**Q: I had the bot installed early, do I get anything?**\nA: Yes! All 76 early adopter servers get **one completely free full AI server setup** as a loyalty gift. Just run `/setup run` in your server to claim it.\n\n**Q: Can I edit the server structure after the bot builds it?**\nA: Absolutely! The bot builds standard Discord channels and roles. You have full ownership and can rename, delete, or add anything you want."
+          "body": "**Q: How do I invite the bot to my server?**\nA: You can invite it directly from our bot profile on Discord, or ask for the invite link in <#general>.\n\n**Q: What is the Basic Build Pack?**\nA: The Basic Build Pack is a one-time purchase ($3.99) that grants you **one complete premium server build** (unlimited channels, roles, full AI customization, auto-written rules, and FAQs).\n\n**Q: What is the Pro Builder subscription?**\nA: The Pro Builder subscription ($6.99/mo) unlocks **unlimited server builds and rebuilds**, all **Fast-Track Presets**, a **built-in ticket system** on servers you build (categories + staff pings), and post-build embed edits via `/setup edit-message`.\n\n**Q: I had the bot installed early, do I get anything?**\nA: Yes! All 76 early adopter servers get **one completely free full AI server setup** as a loyalty gift. Just run `/setup run` in your server to claim it.\n\n**Q: Can I edit the server structure after the bot builds it?**\nA: Absolutely! The bot builds standard Discord channels and roles. You have full ownership and can rename, delete, or add anything you want."
         },
         "permissionsPreset": "public-readonly",
         "order": 3
@@ -97,7 +97,7 @@
         "type": "text",
         "message": {
           "title": "🎟️ Open a Support Ticket",
-          "body": "Need assistance with **billing**, **subscriptions**, or **custom configurations**?\n\nOur team is here to help!\n\n**Pro Builder** subscribers: use the **Open Support Ticket** button below.\nBasic Build Pack does not include private tickets."
+          "body": "Need assistance with **billing**, **subscriptions**, or **custom configurations**?\n\nOur team is here to help!\n\n**Anyone** can open a ticket — choose a category below and staff will be notified."
         },
         "permissionsPreset": "public-readonly",
         "order": 0
@@ -131,6 +131,17 @@
   },
   "private": {
     "staff": ["staff-chat", "staff-logs"]
+  },
+  "tickets": {
+    "enabled": true,
+    "panelChannel": "create-ticket",
+    "categories": [
+      { "id": "help", "label": "General Help", "description": "How to use the bot or your server", "emoji": "❓" },
+      { "id": "billing", "label": "Billing", "description": "Purchases, packs & subscriptions", "emoji": "💳" },
+      { "id": "bug", "label": "Bug Report", "description": "Something is not working", "emoji": "🐛" },
+      { "id": "feature", "label": "Feature Request", "description": "Suggest improvements", "emoji": "✨" }
+    ],
+    "staffRoles": ["Support Agent", "Founder"]
   },
   "welcomeScreen": {
     "description": "Welcome to JustTheBuilder Support Server!",

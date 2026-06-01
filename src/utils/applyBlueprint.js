@@ -4,6 +4,8 @@ import { postMessages } from "./builder/messages.js";
 import { applyCommunityFeatures } from "./builder/community.js";
 import { log } from "./logger.js";
 import { sendProgress } from "./progress.js";
+import { saveTicketConfig } from "./tickets/config.js";
+import { deployTicketPanelForGuild } from "./tickets/handler.js";
 import fs from "fs";
 import path from "path";
 
@@ -36,6 +38,17 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
   if (ownerUser) await sendProgress(ownerUser, "Applying community features…");
   await applyCommunityFeatures(guild, blueprint, channelMap);
 
+  if (blueprint.tickets?.enabled) {
+    if (ownerUser) await sendProgress(ownerUser, "Setting up support ticket panel…");
+    saveTicketConfig(guild.id, blueprint.tickets, blueprint);
+    try {
+      await deployTicketPanelForGuild(guild, guild.client, blueprint.tickets);
+    } catch (err) {
+      log(`Ticket panel deploy failed: ${err.message}`);
+      if (ownerUser) await sendProgress(ownerUser, `⚠️ Ticket panel failed: ${err.message}`);
+    }
+  }
+
   if (ownerUser) await sendProgress(ownerUser, "Finalizing setup…");
 
   const end = Date.now();
@@ -56,7 +69,7 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
           : "";
     await sendProgress(
       ownerUser,
-      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}${embedNote}\n\nMissing embeds? /setup post-messages\nRebuild from scratch? /setup nuke then /setup run`
+      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}${embedNote}${blueprint.tickets?.enabled ? "\n🎟️ Tickets: live in #create-ticket" : ""}\n\nMissing embeds? /setup post-messages\nTicket panel: /setup ticket-panel`
     );
   }
 

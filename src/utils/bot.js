@@ -121,7 +121,7 @@ client.on("entitlementCreate", async (entitlement) => {
       "✅ `/setup run` — unlimited server builds, any time",
       "✅ `/setup run preset:gaming` — fast-track preset templates (Gaming, Crypto, Content & more)",
       "✅ `/setup edit-message` — edit bot messages & embeds after your server is built",
-      "✅ **Private support tickets** in our support server (#create-ticket)",
+      "✅ **Ticket system** on servers you build (categories + staff role pings)",
       "",
       "**To get started:** Go to any server you own and run `/setup run`.",
       "The bot will DM you to customize your build.",

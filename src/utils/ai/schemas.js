@@ -145,6 +145,29 @@ export const blueprintSchema = {
         },
         additionalProperties: false
       }
+    },
+    tickets: {
+      type: "object",
+      properties: {
+        enabled: { type: "boolean" },
+        panelChannel: { type: "string" },
+        categories: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              label: { type: "string" },
+              description: { type: "string" },
+              emoji: { type: "string" }
+            },
+            required: ["id", "label"],
+            additionalProperties: false
+          }
+        },
+        staffRoles: { type: "array", items: { type: "string" } }
+      },
+      additionalProperties: false
     }
   },
   required: ["roles", "categories"],

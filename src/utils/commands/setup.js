@@ -59,7 +59,7 @@ export const SetupCommandData = {
     {
       type: 1,
       name: "ticket-panel",
-      description: "Post the Pro support ticket button in #create-ticket"
+      description: "Post the support ticket category menu in #create-ticket"
     },
     {
       type: 1,
@@ -353,13 +353,31 @@ export async function handleSetupInteraction(interaction, client) {
   } else if (sub === "ticket-panel") {
     await interaction.reply({ ephemeral: true, content: "Posting support ticket panel…" });
     try {
+      const { getTicketConfig, saveTicketConfig, buildTicketsConfigFromInterview } = await import(
+        "../tickets/config.js"
+      );
       const { deployTicketPanelInGuild } = await import("../tickets/handler.js");
-      const ok = await deployTicketPanelInGuild(interaction.guild, client);
+      let config = getTicketConfig(interaction.guild.id);
+      if (!config) {
+        const bpPath = path.resolve("data", "blueprints", `${interaction.guild.id}.json`);
+        if (fs.existsSync(bpPath)) {
+          const bp = JSON.parse(fs.readFileSync(bpPath, "utf-8"));
+          config = bp.tickets;
+        }
+      }
+      if (!config?.enabled) {
+        config = buildTicketsConfigFromInterview(
+          ["", "", "", "", "", "", "Admin, Moderator", "", "", "yes", ""],
+          (await import("../ai/interviewConfig.js")).A
+        );
+        saveTicketConfig(interaction.guild.id, config, null);
+      }
+      const ok = config?.enabled && (await deployTicketPanelInGuild(interaction.guild, client));
       await interaction.followUp({
         ephemeral: true,
         content: ok
-          ? "✅ Ticket panel is live in your ticket channel. **Pro Builder** subscribers can open tickets (free for bot owner)."
-          : "❌ No `#create-ticket` (or similar) channel found. Create one or run `/setup run` with a support layout."
+          ? "✅ Ticket panel is live — **anyone** can pick a category and open a ticket. Staff roles are pinged automatically."
+          : "❌ No ticket channel found. Run `/setup run` with tickets enabled, or create `#create-ticket`."
       });
     } catch (err) {
       log(`ticket-panel failed: ${err.message}`);

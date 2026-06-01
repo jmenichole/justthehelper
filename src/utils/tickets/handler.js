@@ -4,21 +4,16 @@ import {
   ButtonStyle,
   ChannelType,
   EmbedBuilder,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  StringSelectMenuBuilder
 } from "discord.js";
 import fs from "fs";
 import path from "path";
 import { log } from "../logger.js";
-import { canOpenSupportTicket, isBotOwner } from "../entitlements.js";
+import { getTicketConfig } from "./config.js";
 
-const OPEN_ID = "jtb_ticket_open";
+const SELECT_ID = "jtb_ticket_category";
 const CLOSE_ID = "jtb_ticket_close";
-
-const TICKET_PANEL_BODY =
-  "Need assistance with **billing**, **subscriptions**, or **custom configurations**?\n\n" +
-  "Our team is here to help!\n\n" +
-  "**Pro Builder** subscribers can open a private support ticket below.\n" +
-  "*(Bot owner & staff — always free.)*";
 
 function ticketsPath(guildId) {
   const dir = path.resolve("data", "tickets");
@@ -40,85 +35,149 @@ function saveTicketState(guildId, state) {
   fs.writeFileSync(ticketsPath(guildId), JSON.stringify(state, null, 2));
 }
 
-function staffRoleIds(guild) {
-  return guild.roles.cache
-    .filter((r) => /admin|mod|staff|support|founder/i.test(r.name) && !r.managed)
-    .map((r) => r.id);
+function resolveStaffRoleIds(guild, staffRoleNames = []) {
+  const ids = new Set();
+  for (const name of staffRoleNames) {
+    const role = guild.roles.cache.find(
+      (r) =>
+        !r.managed &&
+        (r.name.toLowerCase() === name.toLowerCase() ||
+          r.name.toLowerCase().includes(name.toLowerCase()))
+    );
+    if (role) ids.add(role.id);
+  }
+  if (!ids.size) {
+    guild.roles.cache.forEach((r) => {
+      if (!r.managed && /admin|mod|staff|support|founder/i.test(r.name)) ids.add(r.id);
+    });
+  }
+  return [...ids];
 }
 
-function sanitizeTicketSlug(user) {
-  const base = (user.username || "user")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 20);
-  return base || "user";
+function staffMentionLine(guild, staffRoleNames) {
+  const ids = resolveStaffRoleIds(guild, staffRoleNames);
+  if (!ids.length) return "";
+  return ids.map((id) => `<@&${id}>`).join(" ");
 }
 
-export function buildTicketPanelPayload() {
+function sanitizeSlug(user) {
+  return (
+    (user.username || "user")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .slice(0, 16) || "user"
+  );
+}
+
+function findCategory(config, categoryId) {
+  return config.categories?.find((c) => c.id === categoryId);
+}
+
+export function buildTicketPanelPayload(config) {
   const embed = new EmbedBuilder()
-    .setColor(0xffd700)
-    .setTitle("🎟️ Open a Support Ticket")
-    .setDescription(TICKET_PANEL_BODY);
+    .setColor(0x5865f2)
+    .setTitle("🎟️ Support Tickets")
+    .setDescription(
+      [
+        "Need help? **Anyone** can open a private ticket.",
+        "",
+        "**Choose a category** below — staff will be notified automatically.",
+        "",
+        config.categories?.map((c) => `${c.emoji || "•"} **${c.label}** — ${c.description || ""}`).join("\n") ||
+          "Select a category to begin."
+      ].join("\n")
+    )
+    .setFooter({ text: "JustTheBuilder Ticket System" });
+
+  const options = (config.categories || []).slice(0, 25).map((c) => ({
+    label: c.label.slice(0, 100),
+    value: c.id,
+    description: (c.description || c.label).slice(0, 100),
+    emoji: c.emoji || undefined
+  }));
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(OPEN_ID)
-      .setLabel("Open Support Ticket")
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji("🎟️")
+    new StringSelectMenuBuilder()
+      .setCustomId(SELECT_ID)
+      .setPlaceholder("Select a ticket category…")
+      .addOptions(options.length ? options : [{ label: "General Help", value: "general" }])
   );
 
   return { embeds: [embed], components: [row] };
 }
 
+function findPanelChannel(guild, panelChannelName) {
+  const slug = (panelChannelName || "create-ticket").toLowerCase();
+  return guild.channels.cache.find(
+    (c) =>
+      c.type === ChannelType.GuildText &&
+      (c.name === slug || c.name.includes(slug) || /create-ticket|open-ticket|support-ticket/i.test(c.name))
+  );
+}
+
 /**
- * Post ticket panel if not already present (avoids duplicates on rebuild).
- * @param {import('discord.js').TextChannel} channel
- * @param {import('discord.js').Client} client
+ * Post or refresh ticket panel in the configured channel.
  */
-export async function ensureTicketPanel(channel, client) {
-  if (!channel?.isTextBased?.()) return null;
+export async function ensureTicketPanel(channel, client, config) {
+  if (!channel?.isTextBased?.() || !config?.enabled) return null;
   try {
-    const recent = await channel.messages.fetch({ limit: 20 });
+    const recent = await channel.messages.fetch({ limit: 25 });
     const existing = recent.find(
       (m) =>
         m.author.id === client.user.id &&
         m.components?.some((row) =>
-          row.components?.some((c) => c.customId === OPEN_ID)
+          row.components?.some((c) => c.customId === SELECT_ID)
         )
     );
-    if (existing) return existing;
-    return channel.send(buildTicketPanelPayload());
+    if (existing) {
+      await existing.edit(buildTicketPanelPayload(config));
+      return existing;
+    }
+    return channel.send(buildTicketPanelPayload(config));
   } catch (err) {
-    log(`Ticket panel failed in #${channel.name}: ${err.message}`);
+    log(`Ticket panel failed: ${err.message}`);
     return null;
   }
 }
 
-async function findTicketParent(guild, nearChannel) {
-  if (nearChannel?.parent) return nearChannel.parent;
-  const cat = guild.channels.cache.find(
-    (c) =>
-      c.type === ChannelType.GuildCategory &&
-      /support|ticket|client/i.test(c.name)
-  );
-  return cat || null;
+export async function deployTicketPanelForGuild(guild, client, config) {
+  if (!config?.enabled) return false;
+  const channel = findPanelChannel(guild, config.panelChannel);
+  if (!channel) return false;
+  await ensureTicketPanel(channel, client, config);
+  return true;
 }
 
-async function createTicketChannel(guild, member, nearChannel) {
+async function findTicketParent(guild, nearChannel) {
+  if (nearChannel?.parent) return nearChannel.parent;
+  return (
+    guild.channels.cache.find(
+      (c) => c.type === ChannelType.GuildCategory && /support|ticket|help|client/i.test(c.name)
+    ) || null
+  );
+}
+
+async function createTicketChannel(guild, member, nearChannel, config, categoryId) {
+  const category = findCategory(config, categoryId) || {
+    id: categoryId,
+    label: categoryId,
+    description: ""
+  };
+
   const state = loadTicketState(guild.id);
-  if (state.open[member.id]) {
-    const existingId = state.open[member.id];
-    const existing = guild.channels.cache.get(existingId);
-    if (existing) return { channel: existing, alreadyOpen: true };
-    delete state.open[member.id];
+  const openKey = `${member.id}:${category.id}`;
+  if (state.open[openKey]) {
+    const existing = guild.channels.cache.get(state.open[openKey]);
+    if (existing) return { channel: existing, alreadyOpen: true, category };
+    delete state.open[openKey];
   }
 
   state.counter += 1;
   const num = String(state.counter).padStart(4, "0");
-  const slug = sanitizeTicketSlug(member.user);
+  const slug = sanitizeSlug(member.user);
   const parent = await findTicketParent(guild, nearChannel);
+  const staffIds = resolveStaffRoleIds(guild, config.staffRoles);
 
   const overwrites = [
     { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -143,7 +202,7 @@ async function createTicketChannel(guild, member, nearChannel) {
     }
   ];
 
-  for (const roleId of staffRoleIds(guild)) {
+  for (const roleId of staffIds) {
     overwrites.push({
       id: roleId,
       allow: [
@@ -155,64 +214,63 @@ async function createTicketChannel(guild, member, nearChannel) {
     });
   }
 
-  const channel = await guild.channels.create({
-    name: `ticket-${num}-${slug}`,
+  const channelName = `ticket-${category.id}-${num}-${slug}`.slice(0, 100);
+  const ticketChannel = await guild.channels.create({
+    name: channelName,
     type: ChannelType.GuildText,
     parent: parent?.id,
-    topic: `Support ticket for ${member.user.tag} — Pro Builder`,
+    topic: `[${category.label}] Ticket #${num} — ${member.user.tag}`,
     permissionOverwrites: overwrites,
-    reason: `Support ticket #${num} for ${member.user.tag}`
+    reason: `Ticket ${num} (${category.label}) for ${member.user.tag}`
   });
 
-  state.open[member.id] = channel.id;
+  state.open[openKey] = ticketChannel.id;
   saveTicketState(guild.id, state);
 
+  const pings = staffMentionLine(guild, config.staffRoles);
   const closeRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(CLOSE_ID)
-      .setLabel("Close Ticket")
-      .setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId(CLOSE_ID).setLabel("Close Ticket").setStyle(ButtonStyle.Danger)
   );
 
   const intro = new EmbedBuilder()
-    .setColor(0x9b59b6)
-    .setTitle(`🎟️ Ticket #${num}`)
+    .setColor(0x57f287)
+    .setTitle(`${category.emoji || "🎟️"} ${category.label} — Ticket #${num}`)
     .setDescription(
       [
         `**Opened by:** ${member}`,
+        `**Category:** ${category.label}`,
+        category.description ? `**About:** ${category.description}` : "",
         "",
-        "Please describe your issue (**billing**, **subscription**, or **setup help**) in detail.",
-        "Staff will respond as soon as possible.",
-        "",
-        isBotOwner(member.id)
-          ? "_Owner bypass — priority support._"
-          : "_Pro Builder support ticket._"
-      ].join("\n")
-    )
-    .setFooter({ text: "JustTheBuilder Support" });
+        "Describe your issue in detail. Staff have been notified."
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
 
-  await channel.send({
-    content: `${member} — staff will be with you shortly.`,
+  await ticketChannel.send({
+    content: [pings, `${member}`].filter(Boolean).join("\n"),
     embeds: [intro],
     components: [closeRow]
   });
 
-  return { channel, alreadyOpen: false, num };
+  return { channel: ticketChannel, alreadyOpen: false, category, num };
 }
 
 async function closeTicketChannel(channel, interaction) {
   const guild = channel.guild;
   const state = loadTicketState(guild.id);
-  const entry = Object.entries(state.open).find(([, id]) => id === channel.id);
-  if (entry) delete state.open[entry[0]];
+  for (const [key, id] of Object.entries(state.open)) {
+    if (id === channel.id) delete state.open[key];
+  }
   saveTicketState(guild.id, state);
 
+  const staffIds = resolveStaffRoleIds(guild, getTicketConfig(guild.id)?.staffRoles || []);
   const isStaff =
-    isBotOwner(interaction.user.id) ||
     interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
-    staffRoleIds(guild).some((id) => interaction.member?.roles?.cache?.has(id));
+    staffIds.some((id) => interaction.member?.roles?.cache?.has(id));
 
-  const isOpener = entry && entry[0] === interaction.user.id;
+  const openerOverwrite = channel.permissionOverwrites?.cache?.get(interaction.user.id);
+  const isOpener = openerOverwrite?.allow.has(PermissionFlagsBits.ViewChannel);
 
   if (!isStaff && !isOpener) {
     return interaction.reply({
@@ -224,70 +282,49 @@ async function closeTicketChannel(channel, interaction) {
   await interaction.reply({ ephemeral: true, content: "🔒 Closing ticket in 3 seconds…" });
   setTimeout(async () => {
     try {
-      await channel.delete("Support ticket closed");
+      await channel.delete("Ticket closed");
     } catch (err) {
-      log(`Ticket close delete failed: ${err.message}`);
+      log(`Ticket close failed: ${err.message}`);
     }
   }, 3000);
 }
 
-/**
- * Handle ticket button interactions.
- */
 export async function handleTicketInteraction(interaction, client) {
-  if (!interaction.isButton()) return false;
-  if (interaction.customId !== OPEN_ID && interaction.customId !== CLOSE_ID) return false;
-
-  if (interaction.customId === OPEN_ID) {
-    const access = await canOpenSupportTicket(
-      client,
-      interaction.user.id,
-      interaction.entitlements
-    );
-    if (!access.allowed) {
+  if (interaction.isStringSelectMenu() && interaction.customId === SELECT_ID) {
+    const config = getTicketConfig(interaction.guild.id);
+    if (!config) {
       await interaction.reply({
         ephemeral: true,
-        content: [
-          "💎 **Pro Builder subscription required** to open support tickets.",
-          "",
-          "Subscribe to **Pro Builder** ($6.99/mo) on the bot profile to unlock:",
-          "• Unlimited server builds",
-          "• **Private support tickets** (billing & setup help)",
-          "• Post-build embed edits",
-          "",
-          "Basic Build Pack does not include support tickets."
-        ].join("\n")
+        content: "Tickets are not configured on this server. Server owner: run `/setup run` or `/setup ticket-panel`."
       });
       return true;
     }
 
+    const categoryId = interaction.values[0];
     await interaction.deferReply({ ephemeral: true });
     try {
-      const near = interaction.channel;
-      const { channel, alreadyOpen, num } = await createTicketChannel(
+      const { channel, alreadyOpen, category, num } = await createTicketChannel(
         interaction.guild,
         interaction.member,
-        near
+        interaction.channel,
+        config,
+        categoryId
       );
       if (alreadyOpen) {
-        await interaction.editReply({
-          content: `You already have an open ticket: ${channel}`
-        });
+        await interaction.editReply({ content: `You already have an open **${category.label}** ticket: ${channel}` });
       } else {
         await interaction.editReply({
-          content: `✅ Ticket **#${num}** created: ${channel}`
+          content: `✅ **${category.label}** ticket #${num} created: ${channel}\nStaff have been notified.`
         });
       }
     } catch (err) {
       log(`Create ticket failed: ${err.message}`);
-      await interaction.editReply({
-        content: `❌ Could not create ticket: ${err.message}`
-      });
+      await interaction.editReply({ content: `❌ Could not create ticket: ${err.message}` });
     }
     return true;
   }
 
-  if (interaction.customId === CLOSE_ID) {
+  if (interaction.isButton() && interaction.customId === CLOSE_ID) {
     await closeTicketChannel(interaction.channel, interaction);
     return true;
   }
@@ -295,17 +332,8 @@ export async function handleTicketInteraction(interaction, client) {
   return false;
 }
 
-/**
- * Find #create-ticket (or similar) and refresh panel.
- */
 export async function deployTicketPanelInGuild(guild, client) {
-  const channel = guild.channels.cache.find(
-    (c) =>
-      c.type === ChannelType.GuildText &&
-      (/create-ticket|open-ticket|support-ticket/i.test(c.name) ||
-        c.name.includes("ticket"))
-  );
-  if (!channel) return false;
-  await ensureTicketPanel(channel, client);
-  return true;
+  const config = getTicketConfig(guild.id);
+  if (!config) return false;
+  return deployTicketPanelForGuild(guild, client, config);
 }

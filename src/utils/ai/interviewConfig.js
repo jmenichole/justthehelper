@@ -9,7 +9,8 @@ export const A = {
   ROLES: 6,
   PRIVATE: 7,
   EXTRAS: 8,
-  COMMUNITY: 9
+  TICKETS: 9,
+  COMMUNITY: 10
 };
 
 export const SUGGESTION_PACKS = {
@@ -53,8 +54,13 @@ export const SUGGESTION_PACKS = {
   extras: [
     "none",
     "verified-only: holders-lounge",
-    "Links: add my website/socials in welcome (describe in next message)",
-    "support: include create-ticket channel"
+    "Links: add my website/socials in welcome (describe in next message)"
+  ],
+  tickets: ["yes (recommended)", "no"],
+  ticketCategories: [
+    "General Help, Report, Billing, Technical",
+    "Help, Billing, Bug Report, Feature Request",
+    "General, Moderation, Partnership, Other"
   ],
   yesNo: ["yes", "no"],
   ruleTemplates: [
@@ -110,8 +116,13 @@ export const INTERVIEW_QUESTIONS = [
   },
   {
     id: "extras",
-    text: "Extras: verified-only areas, ticket channel, or links for welcome/about?",
+    text: "Extras: verified-only areas or links for welcome/about?",
     suggestions: SUGGESTION_PACKS.extras
+  },
+  {
+    id: "tickets",
+    text: "Enable support tickets? (private channels + staff pings — anyone can open)",
+    suggestions: SUGGESTION_PACKS.tickets
   },
   {
     id: "community",
@@ -132,6 +143,7 @@ export const PRESET_ANSWERS = {
     "Admin, Moderator, VIP, Member",
     "staff-chat, mod-logs",
     "none",
+    "yes",
     "yes"
   ],
   crypto: [
@@ -144,6 +156,7 @@ export const PRESET_ANSWERS = {
     "Founder, Mod, Holder, Verified, Member",
     "team-chat, mod-logs",
     "verified-only: holders-only",
+    "yes",
     "yes"
   ],
   content: [
@@ -156,6 +169,7 @@ export const PRESET_ANSWERS = {
     "Streamer, Mod, Subscriber, Follower",
     "mod-chat, planning",
     "none",
+    "yes",
     "yes"
   ],
   professional: [
@@ -168,6 +182,7 @@ export const PRESET_ANSWERS = {
     "Admin, Moderator, Professional, Member",
     "admin-only, reports",
     "none",
+    "no",
     "yes"
   ],
   support: [
@@ -179,7 +194,8 @@ export const PRESET_ANSWERS = {
     "announcements only",
     "Admin, Support Agent, Member",
     "staff-area, ticket-logs",
-    "support: include create-ticket channel",
+    "none",
+    "yes",
     "yes"
   ]
 };
@@ -225,7 +241,8 @@ export function buildInterviewBrief(answers, guild) {
     `Include announcements channel (announcement-lock preset): ${announcements ? "yes" : "no"}`,
     `Roles: ${answers[A.ROLES]}`,
     `Private staff channels: ${answers[A.PRIVATE]}`,
-    `Extras (verified areas, tickets, links): ${answers[A.EXTRAS]}`,
+    `Extras (verified areas, links): ${answers[A.EXTRAS]}`,
+    `Support ticket system: ${answers[A.TICKETS]}`,
     `Discord Community flag: ${answers[A.COMMUNITY]}`,
     `---`,
     `Requirements:`,
@@ -234,6 +251,8 @@ export function buildInterviewBrief(answers, guild) {
     `- Each info channel needs message: { title, body } with real copy derived from About.`,
     `- rules permissionsPreset: public-readonly; announcements permissionsPreset: announcement-lock.`,
     `- At least one general chat; staff private channels use staff-private or mods-only presets.`,
-    `- Honor extras (ticket channel, verified-only channels, links in welcome/about bodies).`
+    `- Honor extras (verified-only channels, links in welcome/about bodies).`,
+    `- If tickets=yes: include create-ticket channel (public-readonly) and tickets config in blueprint.`,
+    `- tickets object: { enabled: true, panelChannel: "create-ticket", categories: [{id,label,description,emoji}], staffRoles: [from roles list] }`
   ].join("\n");
 }
