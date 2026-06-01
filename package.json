@@ -8,7 +8,8 @@
     "start": "node src/bot.js",
     "dev": "nodemon src/bot.js",
     "simulate": "node scripts/simulate.js",
-    "dry-run": "node scripts/runLocalBlueprint.js data/blueprints/example.json || true"
+    "dry-run": "node scripts/runLocalBlueprint.js data/blueprints/example.json || true",
+    "merge-tickets": "node scripts/mergeTicketCategories.js"
   },
   "dependencies": {
     "@ai-sdk/groq": "^3.0.39",

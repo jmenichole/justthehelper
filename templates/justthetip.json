@@ -44,7 +44,7 @@
         "type": "text",
         "message": {
           "title": "📜 Server Guidelines",
-          "body": "Welcome! Please follow these simple guidelines to keep our community helpful and friendly:\n\n1. **Be Respectful:** Treat fellow builders and staff with kindness. No harassment, hate speech, or toxicity.\n2. **No Spamming:** Avoid spamming messages, invites, or bot commands in public channels.\n3. **Use the Right Channels:** Post bug reports in <#bug-reports>, support requests in <#create-ticket>, and general chatter in <#general>.\n4. **No Direct Messages to Staff:** Keep support questions in open tickets so our team can help you efficiently.\n5. **Follow Discord Terms of Service:** All standard Discord guidelines apply here.\n\nViolation of these rules may lead to warning, mute, or ban by staff."
+          "body": "Welcome! Please follow these simple guidelines to keep our community helpful and friendly:\n\n1. **Be Respectful:** Treat fellow builders and staff with kindness. No harassment, hate speech, or toxicity.\n2. **No Spamming:** Avoid spamming messages, invites, or bot commands in public channels.\n3. **Use the Right Channels:** Open **Support & Bugs** tickets in <#create-ticket>, and keep general chatter in <#general>.\n4. **No Direct Messages to Staff:** Keep support questions in open tickets so our team can help you efficiently.\n5. **Follow Discord Terms of Service:** All standard Discord guidelines apply here.\n\nViolation of these rules may lead to warning, mute, or ban by staff."
         },
         "permissionsPreset": "public-readonly",
         "order": 1
@@ -136,9 +136,13 @@
     "enabled": true,
     "panelChannel": "create-ticket",
     "categories": [
-      { "id": "help", "label": "General Help", "description": "How to use the bot or your server", "emoji": "❓" },
+      {
+        "id": "support",
+        "label": "Support & Bugs",
+        "description": "Help, billing questions, or report a bug (include steps to reproduce)",
+        "emoji": "🛟"
+      },
       { "id": "billing", "label": "Billing", "description": "Purchases, packs & subscriptions", "emoji": "💳" },
-      { "id": "bug", "label": "Bug Report", "description": "Something is not working", "emoji": "🐛" },
       { "id": "feature", "label": "Feature Request", "description": "Suggest improvements", "emoji": "✨" }
     ],
     "staffRoles": ["Support Agent", "Founder"]
