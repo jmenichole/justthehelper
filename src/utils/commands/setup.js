@@ -140,18 +140,77 @@ export async function handleSetupInteraction(interaction, client) {
 
   const sub = interaction.options.getSubcommand();
 
-  // Check Premium Entitlement
-  const isPremium = process.env.PREMIUM_SKU_ID 
-    ? interaction.entitlements.some(e => e.skuId === process.env.PREMIUM_SKU_ID) 
+  // --- Entitlement Check ---
+  // PREMIUM_SKU_ID     = Basic Build Pack ($3.99 consumable, one build)
+  // SUBSCRIPTION_SKU_ID = Pro Builder ($6.99/mo, unlimited builds)
+  const basicPackSkuId = process.env.PREMIUM_SKU_ID;
+  const subSkuId = process.env.SUBSCRIPTION_SKU_ID;
+
+  const activeEntitlements = interaction.entitlements;
+  const hasSub = subSkuId
+    ? activeEntitlements.some(e => e.skuId === subSkuId)
     : false;
+  const basicPackEntitlement = basicPackSkuId
+    ? activeEntitlements.find(e => e.skuId === basicPackSkuId && !e.consumed)
+    : null;
+  const hasBasicPack = !!basicPackEntitlement;
+
+  // Check if early adopter bypass is active
+  let isEarlyAdopter = false;
+  let hasFreeBuildLeft = false;
+  const earlyAdoptersPath = path.resolve('data', 'early_adopters.json');
+  if (fs.existsSync(earlyAdoptersPath)) {
+    try {
+      const adopters = JSON.parse(fs.readFileSync(earlyAdoptersPath, 'utf-8'));
+      if (Array.isArray(adopters) && adopters.includes(interaction.guild.id)) {
+        isEarlyAdopter = true;
+        const cfg = loadGuildConfig(interaction.guild.id);
+        if (!cfg.earlyAdopterFreeBuildUsed) {
+          hasFreeBuildLeft = true;
+        }
+      }
+    } catch {}
+  }
+
+  // isPremium = has subscription OR has unconsumed basic build pack OR has early adopter free build left
+  const isPremium = hasSub || hasBasicPack || hasFreeBuildLeft;
+  // isSubscriber = recurring sub only (unlocks presets)
+  const isSubscriber = hasSub;
 
   if (sub === "run") {
     const preset = interaction.options.getString("preset");
 
-    if (preset && !isPremium) {
+    // Presets require a subscription (not just a one-time pack)
+    if (preset && !isSubscriber) {
       return interaction.reply({
         ephemeral: true,
-        content: "💎 **Premium Feature**\nOne-click presets are exclusive to premium supporters.\n\nPlease upgrade to use Fast-Track, or run `/setup run` without a preset for the manual interview."
+        content: [
+          "⚡ **Fast-Track Presets are a Pro Builder feature.**",
+          "Subscribe for $6.99/mo for unlimited rebuilds + all presets.",
+          "",
+          "Or run `/setup run` (no preset) with a **Basic Build Pack** ($3.99 one-time) for a fully AI-customized build.",
+          "",
+          "👉 Check my bot profile to upgrade!"
+        ].join("\n")
+      });
+    }
+
+    // Core /setup run requires EITHER a subscription, basic pack, or unused early adopter free build
+    if (!isPremium) {
+      const message = [
+        "🔒 **You need a pack to run the server builder.**",
+        "",
+        "**Basic Build Pack** — $3.99 (one complete server setup)",
+        "**Pro Builder** — $6.99/mo (unlimited rebuilds + presets)",
+        ""
+      ];
+      if (isEarlyAdopter) {
+        message.push("⚠️ *Note: Your Early Adopter free build has already been used for this server.*", "");
+      }
+      message.push("👉 Check my bot profile to get started!");
+      return interaction.reply({
+        ephemeral: true,
+        content: message.join("\n")
       });
     }
 
@@ -180,7 +239,26 @@ export async function handleSetupInteraction(interaction, client) {
           return;
         }
       }
-      await runInterview(owner.user, interaction.guild, client, preset, isPremium);
+      const buildSuccess = await runInterview(owner.user, interaction.guild, client, preset, isPremium);
+      // Consume the entitlement or early adopter free build after a successful build
+      if (buildSuccess) {
+        if (hasBasicPack && basicPackEntitlement) {
+          try {
+            await interaction.client.application.consumeEntitlement(basicPackEntitlement.id);
+            log(`Consumed entitlement ${basicPackEntitlement.id} for user ${interaction.user.id}`);
+          } catch (consumeErr) {
+            log(`Failed to consume entitlement: ${consumeErr.message}`);
+          }
+        } else if (!hasSub && hasFreeBuildLeft) {
+          try {
+            const cfg = loadGuildConfig(interaction.guild.id);
+            saveGuildConfig(interaction.guild.id, { ...cfg, earlyAdopterFreeBuildUsed: true });
+            log(`Marked early adopter free build as used for guild ${interaction.guild.id}`);
+          } catch (saveErr) {
+            log(`Failed to save early adopter status: ${saveErr.message}`);
+          }
+        }
+      }
     } catch (err) {
       log(`runInterview error: ${err.message}`);
       await interaction.followUp({ ephemeral: true, content: `❌ Something went wrong during setup: ${err.message}` });

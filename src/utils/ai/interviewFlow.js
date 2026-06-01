@@ -323,7 +323,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       "❌ Could not produce a valid blueprint after several attempts. Errors: " +
         formatValidationErrors(validation.errors)
     );
-    return;
+    return false;
   }
 
   // Enforce Free Tier Limit
@@ -457,8 +457,10 @@ export async function runInterview(user, guild, client, preset = null, isPremium
   await user.send("✨ Blueprint validated. Building your server now...");
   try {
     await applyBlueprint(guild, blueprint, { ownerUser: user });
+    return true;
   } catch (err) {
     log(`Build failed: ${err.message}`);
     await user.send("❌ An error occurred while building the server. Check bot logs.");
+    return false;
   }
 }

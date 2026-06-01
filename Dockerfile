@@ -15,4 +15,5 @@ RUN pnpm install --frozen-lockfile || pnpm install
 COPY . .
 
 # Start the application
+EXPOSE 3000
 CMD ["pnpm", "start"]

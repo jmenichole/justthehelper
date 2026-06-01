@@ -1,35 +1,35 @@
 import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createGroq } from "@ai-sdk/groq";
 import { log } from "../logger.js";
 
+// Default model: llama-3.3-70b-versatile — fast, free, excellent at structured JSON.
+// Override with GROQ_MODEL env var if needed (e.g. "mixtral-8x7b-32768").
+const DEFAULT_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+
 /**
- * Generic AI gateway wrapper using Vercel AI SDK via Vercel AI Gateway.
- * Returns raw text; caller performs parsing.
+ * Generic AI gateway wrapper using Vercel AI SDK with Groq.
+ * Returns raw text; caller performs JSON parsing and healing.
+ * @param {Array<{role:string, content:string}>} messages
+ * @param {{ model?: string, maxTokens?: number }} [options]
+ * @returns {Promise<string>}
  */
-export async function askAI(messages, { model = "gpt-4o-mini", maxTokens = 2048 } = {}) {
-  const apiKey = (process.env.OPENAI_API_KEY || process.env.AI_GATEWAY_API_KEY || "").trim();
+export async function askAI(messages, { model = DEFAULT_MODEL, maxTokens = 2048 } = {}) {
+  const apiKey = (process.env.GROQ_API_KEY || "").trim();
   if (!apiKey) {
-    log("AI key missing: set OPENAI_API_KEY in .env");
+    log("AI key missing: set GROQ_API_KEY in .env — get a free key at https://console.groq.com");
     return "";
   }
 
-  // Vercel AI Gateway keys (vck_...) use gateway base URL + provider-prefixed model names.
-  // Standard OpenAI keys (sk-...) hit api.openai.com directly.
-  const isVercelGateway = apiKey.startsWith("vck_");
-  const baseURL = isVercelGateway ? "https://ai-gateway.vercel.sh/v1" : undefined;
-  // Vercel gateway expects model as "openai/gpt-4o-mini"; direct OpenAI expects "gpt-4o-mini"
-  const resolvedModel = isVercelGateway && !model.includes("/") ? `openai/${model}` : model;
+  const client = createGroq({ apiKey });
 
-  const client = createOpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
-
-  // Split system message from the rest
+  // Split system message from the rest for Vercel AI SDK
   const system = messages.find(m => m.role === "system")?.content;
   const prompt = messages.filter(m => m.role !== "system").map(m => m.content).join("\n");
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const { text } = await generateText({
-        model: client(resolvedModel),
+        model: client(model),
         ...(system ? { system } : {}),
         prompt,
         maxTokens,
