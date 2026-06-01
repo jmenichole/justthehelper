@@ -45,7 +45,7 @@ export const SetupCommandData = {
             { name: "🎥 Content Creator", value: "content" },
             { name: "💼 Professional", value: "professional" },
             { name: "🛡️ Support Server", value: "support" },
-            { name: "💎 JustTheTip Support Server", value: "justthetip" }
+            { name: "💎 JustTheBuilder Support Server", value: "justthebuilder" }
           ]
         }
       ]
@@ -212,7 +212,7 @@ export async function handleSetupInteraction(interaction, client) {
     const preset = interaction.options.getString("preset");
 
     // Presets require a subscription (not just a one-time pack), except for the bot owner or the free support preset
-    if (preset && preset !== "justthetip" && !isSubscriber && !isOwner) {
+    if (preset && preset !== "justthebuilder" && preset !== "justthetip" && !isSubscriber && !isOwner) {
       return interaction.reply({
         ephemeral: true,
         content: [
@@ -325,7 +325,7 @@ export async function handleSetupInteraction(interaction, client) {
     await wipeServer(interaction.guild);
     await interaction.followUp({
       ephemeral: true,
-      content: "💀 Nuke complete. Run `/setup run` (or `preset:justthetip` for this support layout) to rebuild."
+      content: "💀 Nuke complete. Run `/setup run preset:justthebuilder` to rebuild your support layout."
     });
   } else if (sub === "post-messages") {
     const filePath = path.resolve("data", "blueprints", `${interaction.guild.id}.json`);

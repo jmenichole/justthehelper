@@ -87,7 +87,7 @@ function buildApologyEmbed(customMessage) {
         "",
         "🎁 **Still with us?** Early servers keep **one free full `/setup run`** (owner only). Try:",
         "• `/setup run` — custom AI interview",
-        "• `/setup run preset:justthetip` — support-style layout",
+        "• `/setup run preset:justthebuilder` — official support layout",
         "",
         "If it's not for you anymore, you can kick the bot — no hard feelings. If you stay, we'd love your feedback in our support server.",
         "",

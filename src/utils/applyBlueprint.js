@@ -43,7 +43,7 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
     saveTicketConfig(guild.id, blueprint.tickets, blueprint);
     try {
       await deployTicketPanelForGuild(guild, guild.client, blueprint.tickets, {
-        forceNew: blueprint.lastPreset === "justthetip"
+        forceNew: blueprint.lastPreset === "justthebuilder"
       });
     } catch (err) {
       log(`Ticket panel deploy failed: ${err.message}`);

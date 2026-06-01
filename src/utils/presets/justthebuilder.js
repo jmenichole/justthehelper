@@ -1,10 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-const TEMPLATE_PATH = path.resolve("templates", "justthetip.json");
+const TEMPLATE_PATH = path.resolve("templates", "justthebuilder.json");
 
-/** Merged support + bug ticket categories (single source of truth) */
-export const JUSTTHETIP_TICKET_CATEGORIES = [
+export const JUSTTHEBUILDER_TICKET_CATEGORIES = [
   {
     id: "support",
     label: "Support & Bugs",
@@ -25,28 +24,35 @@ export const JUSTTHETIP_TICKET_CATEGORIES = [
   }
 ];
 
+/** @deprecated use JUSTTHEBUILDER_TICKET_CATEGORIES */
+export const JUSTTHETIP_TICKET_CATEGORIES = JUSTTHEBUILDER_TICKET_CATEGORIES;
+
+export const SUPPORT_PRESET_IDS = ["justthebuilder", "justthetip"];
+
+export function isSupportPreset(preset) {
+  return SUPPORT_PRESET_IDS.includes(preset);
+}
+
 /**
- * Load and normalize the JustTheBuilder support server blueprint (full one-shot build).
+ * Load full JustTheBuilder official support server blueprint.
  * @param {import('discord.js').Guild} guild
  */
-export function loadJustTheTipBlueprint(guild) {
+export function loadJustTheBuilderBlueprint(guild) {
   if (!fs.existsSync(TEMPLATE_PATH)) {
-    throw new Error("templates/justthetip.json not found");
+    throw new Error("templates/justthebuilder.json not found");
   }
 
   const blueprint = JSON.parse(fs.readFileSync(TEMPLATE_PATH, "utf-8"));
   blueprint.name = guild.name;
-  blueprint.lastPreset = "justthetip";
+  blueprint.lastPreset = "justthebuilder";
 
-  // Tickets: always on for this preset
   blueprint.tickets = {
     enabled: true,
     panelChannel: "create-ticket",
-    categories: JUSTTHETIP_TICKET_CATEGORIES,
+    categories: JUSTTHEBUILDER_TICKET_CATEGORIES,
     staffRoles: ["Support Agent", "Founder"]
   };
 
-  // Walk channels — pins, topics, support layout
   for (const catName of Object.keys(blueprint.categories || {})) {
     const channels = blueprint.categories[catName];
     if (!Array.isArray(channels)) continue;
@@ -95,7 +101,10 @@ export function loadJustTheTipBlueprint(guild) {
   return blueprint;
 }
 
-export const JUSTTHETIP_BUILD_SUMMARY = [
+/** @deprecated */
+export const loadJustTheTipBlueprint = loadJustTheBuilderBlueprint;
+
+export const JUSTTHEBUILDER_BUILD_SUMMARY = [
   "💎 **JustTheBuilder support preset** — full build:",
   "• Roles (Founder, Support Agent, Premium, Builder)",
   "• Channels + 💎 emoji prefix",
@@ -103,3 +112,5 @@ export const JUSTTHETIP_BUILD_SUMMARY = [
   "• Ticket panel: Support & Bugs, Billing, Feature Request",
   "• Staff-only areas + announcement channel"
 ].join("\n");
+
+export const JUSTTHETIP_BUILD_SUMMARY = JUSTTHEBUILDER_BUILD_SUMMARY;

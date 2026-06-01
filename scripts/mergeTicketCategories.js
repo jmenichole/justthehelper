@@ -21,9 +21,9 @@ if (!guildId) {
   process.exit(1);
 }
 
-import { JUSTTHETIP_TICKET_CATEGORIES } from "../src/utils/presets/justthetip.js";
+import { JUSTTHEBUILDER_TICKET_CATEGORIES } from "../src/utils/presets/justthebuilder.js";
 
-const MERGED_TICKET_CATEGORIES = JUSTTHETIP_TICKET_CATEGORIES;
+const MERGED_TICKET_CATEGORIES = JUSTTHEBUILDER_TICKET_CATEGORIES;
 
 function patchJsonFile(filePath, patchTickets) {
   if (!fs.existsSync(filePath)) return false;

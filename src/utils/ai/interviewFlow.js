@@ -19,7 +19,11 @@ import {
   ensureVoiceAndAnnouncements,
   injectInfoEmbeds
 } from "./interviewFinalize.js";
-import { loadJustTheTipBlueprint, JUSTTHETIP_BUILD_SUMMARY } from "../presets/justthetip.js";
+import {
+  isSupportPreset,
+  loadJustTheBuilderBlueprint,
+  JUSTTHEBUILDER_BUILD_SUMMARY
+} from "../presets/justthebuilder.js";
 import { loadGuildConfig, saveGuildConfig } from "../storage/guildConfig.js";
 import fs from "fs";
 import path from "path";
@@ -122,11 +126,11 @@ async function generateBlueprint(answers, guild) {
 }
 
 export async function runInterview(user, guild, client, preset = null, isPremium = false) {
-  if (preset === "justthetip") {
+  if (isSupportPreset(preset)) {
     const dm = await user.createDM();
     try {
-      await dm.send(JUSTTHETIP_BUILD_SUMMARY);
-      const blueprint = loadJustTheTipBlueprint(guild);
+      await dm.send(JUSTTHEBUILDER_BUILD_SUMMARY);
+      const blueprint = loadJustTheBuilderBlueprint(guild);
       const validation = validateBlueprint(blueprint);
       if (!validation.valid) {
         await dm.send(
@@ -142,12 +146,12 @@ export async function runInterview(user, guild, client, preset = null, isPremium
         ...loadGuildConfig(guild.id),
         lastBlueprint: blueprint,
         tickets: blueprint.tickets,
-        lastPreset: "justthetip",
+        lastPreset: "justthebuilder",
         builtAt: Date.now()
       });
       return true;
     } catch (err) {
-      log(`justthetip preset failed: ${err.message}`);
+      log(`justthebuilder preset failed: ${err.message}`);
       await dm.send(`❌ Support preset build failed: ${err.message}`);
       return false;
     }
