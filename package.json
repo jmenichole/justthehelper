@@ -11,11 +11,11 @@
     "dry-run": "node scripts/runLocalBlueprint.js data/blueprints/example.json || true"
   },
   "dependencies": {
-    "@ai-sdk/groq": "^1.2.9",
-    "ai": "^4.0.0",
-    "ajv": "^8.12.0",
+    "@ai-sdk/groq": "^3.0.39",
+    "ai": "^6.0.193",
+    "ajv": "^8.20.0",
     "ajv-formats": "^2.1.1",
-    "discord.js": "^14.15.1",
+    "discord.js": "^14.26.4",
     "dotenv": "^16.4.0"
   },
   "devDependencies": {
