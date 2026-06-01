@@ -23,7 +23,10 @@ export async function askAI(messages, { model = DEFAULT_MODEL, maxTokens = 2048 
   const client = createGroq({ apiKey });
 
   // Split system message from the rest for Vercel AI SDK
-  const system = messages.find(m => m.role === "system")?.content;
+  const system = messages
+    .filter(m => m.role === "system")
+    .map(m => m.content)
+    .join("\n\n");
   const prompt = messages.filter(m => m.role !== "system").map(m => m.content).join("\n");
 
   for (let attempt = 1; attempt <= 2; attempt++) {
