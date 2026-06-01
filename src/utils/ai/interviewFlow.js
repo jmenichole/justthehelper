@@ -138,6 +138,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
         );
         return false;
       }
+      blueprint.lastPreset = "justthebuilder";
       await dm.send(
         "🔨 Building now — roles → channels → **embeds** (welcome / rules / FAQ / tickets) → **pin rules** → **ticket category menu**…"
       );

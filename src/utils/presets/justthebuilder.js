@@ -43,8 +43,6 @@ export function loadJustTheBuilderBlueprint(guild) {
   }
 
   const blueprint = JSON.parse(fs.readFileSync(TEMPLATE_PATH, "utf-8"));
-  blueprint.name = guild.name;
-  blueprint.lastPreset = "justthebuilder";
 
   blueprint.tickets = {
     enabled: true,
