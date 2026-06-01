@@ -193,7 +193,10 @@ export function applyExtras(blueprint, answers) {
         type: "text",
         message: {
           title: "🎟️ Open a Support Ticket",
-          body: "Describe your issue below or use your ticket bot command. Staff will respond as soon as possible."
+          body:
+            "Need assistance with **billing**, **subscriptions**, or **custom configurations**?\n\n" +
+            "Our team is here to help!\n\n" +
+            "**Pro Builder** subscribers: use the **Open Support Ticket** button below."
         }
       });
     }

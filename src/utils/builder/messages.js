@@ -49,6 +49,15 @@ export async function postMessages(guild, channelMap, blueprint, ownerUser) {
         const sent = await channel.send({ embeds: [embed] });
         posted.push(label);
 
+        if (/create-ticket|open-ticket|support-ticket/i.test(chDef.name || "")) {
+          try {
+            const { ensureTicketPanel } = await import("../tickets/handler.js");
+            await ensureTicketPanel(channel, guild.client);
+          } catch (panelErr) {
+            log(`Ticket panel in ${label}: ${panelErr.message}`);
+          }
+        }
+
         if (shouldPinMessage(chDef)) {
           try {
             await sent.pin();

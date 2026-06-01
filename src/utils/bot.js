@@ -81,6 +81,9 @@ client.once("clientReady", async () => {
 client.on("guildCreate", (guild) => handleGuildCreate(guild, client));
 
 client.on("interactionCreate", async (i) => {
+  const { handleTicketInteraction } = await import("./tickets/handler.js");
+  if (await handleTicketInteraction(i, client)) return;
+
   const { handleAnnounceInteraction } = await import("./announce.js");
   handleSetupInteraction(i, client);
   handleOnboardingComponent(i, client);
@@ -118,6 +121,7 @@ client.on("entitlementCreate", async (entitlement) => {
       "✅ `/setup run` — unlimited server builds, any time",
       "✅ `/setup run preset:gaming` — fast-track preset templates (Gaming, Crypto, Content & more)",
       "✅ `/setup edit-message` — edit bot messages & embeds after your server is built",
+      "✅ **Private support tickets** in our support server (#create-ticket)",
       "",
       "**To get started:** Go to any server you own and run `/setup run`.",
       "The bot will DM you to customize your build.",

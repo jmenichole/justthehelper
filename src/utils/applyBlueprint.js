@@ -56,7 +56,7 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
           : "";
     await sendProgress(
       ownerUser,
-      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}${embedNote}\n\nRerun: /setup run\nSave as template: /setup save-template <name>`
+      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}${embedNote}\n\nMissing embeds? /setup post-messages\nRebuild from scratch? /setup nuke then /setup run`
     );
   }
 

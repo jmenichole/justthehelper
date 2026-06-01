@@ -58,6 +58,11 @@ export const SetupCommandData = {
     },
     {
       type: 1,
+      name: "ticket-panel",
+      description: "Post the Pro support ticket button in #create-ticket"
+    },
+    {
+      type: 1,
       name: "edit-channel",
       description: "Set channel topic or pin/unpin a message",
       options: [
@@ -343,6 +348,21 @@ export async function handleSetupInteraction(interaction, client) {
       await interaction.followUp({ ephemeral: true, content: summary + failNote });
     } catch (err) {
       log(`post-messages failed: ${err.message}`);
+      await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` });
+    }
+  } else if (sub === "ticket-panel") {
+    await interaction.reply({ ephemeral: true, content: "Posting support ticket panel…" });
+    try {
+      const { deployTicketPanelInGuild } = await import("../tickets/handler.js");
+      const ok = await deployTicketPanelInGuild(interaction.guild, client);
+      await interaction.followUp({
+        ephemeral: true,
+        content: ok
+          ? "✅ Ticket panel is live in your ticket channel. **Pro Builder** subscribers can open tickets (free for bot owner)."
+          : "❌ No `#create-ticket` (or similar) channel found. Create one or run `/setup run` with a support layout."
+      });
+    } catch (err) {
+      log(`ticket-panel failed: ${err.message}`);
       await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` });
     }
   } else if (sub === 'edit-channel') {
