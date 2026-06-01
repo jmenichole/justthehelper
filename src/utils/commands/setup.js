@@ -178,11 +178,13 @@ export async function handleSetupInteraction(interaction, client) {
   // isSubscriber = recurring sub only (unlocks presets)
   const isSubscriber = hasSub;
 
+  const isOwner = process.env.BOT_OWNER_ID && interaction.user.id === process.env.BOT_OWNER_ID;
+
   if (sub === "run") {
     const preset = interaction.options.getString("preset");
 
-    // Presets require a subscription (not just a one-time pack)
-    if (preset && !isSubscriber) {
+    // Presets require a subscription (not just a one-time pack), except for the bot owner or the free support preset
+    if (preset && preset !== "justthetip" && !isSubscriber && !isOwner) {
       return interaction.reply({
         ephemeral: true,
         content: [
@@ -196,8 +198,8 @@ export async function handleSetupInteraction(interaction, client) {
       });
     }
 
-    // Core /setup run requires EITHER a subscription, basic pack, or unused early adopter free build
-    if (!isPremium) {
+    // Core /setup run requires EITHER a subscription, basic pack, unused early adopter free build, or being the bot owner
+    if (!isPremium && !isOwner) {
       const message = [
         "🔒 **You need a pack to run the server builder.**",
         "",
@@ -219,11 +221,11 @@ export async function handleSetupInteraction(interaction, client) {
     const now = Date.now();
     const serverLast = serverCooldowns.get(interaction.guild.id) || 0;
     const userLast = userCooldowns.get(interaction.user.id) || 0;
-    if (now - serverLast < SERVER_COOLDOWN_MS) {
+    if (now - serverLast < SERVER_COOLDOWN_MS && !isOwner) {
       const wait = (((SERVER_COOLDOWN_MS - (now - serverLast)))/1000).toFixed(0);
       return interaction.reply({ ephemeral: true, content: `Server cooldown active. Try again in ${wait}s.` });
     }
-    if (now - userLast < USER_COOLDOWN_MS) {
+    if (now - userLast < USER_COOLDOWN_MS && !isOwner) {
       const wait = (((USER_COOLDOWN_MS - (now - userLast)))/1000).toFixed(0);
       return interaction.reply({ ephemeral: true, content: `Your personal cooldown active. Try again in ${wait}s.` });
     }
@@ -240,9 +242,9 @@ export async function handleSetupInteraction(interaction, client) {
           return;
         }
       }
-      const buildSuccess = await runInterview(owner.user, interaction.guild, client, preset, isPremium);
+      const buildSuccess = await runInterview(owner.user, interaction.guild, client, preset, isPremium || isOwner);
       // Consume the entitlement or early adopter free build after a successful build
-      if (buildSuccess) {
+      if (buildSuccess && !isOwner) {
         if (hasBasicPack && basicPackEntitlement) {
           try {
             await interaction.client.application.consumeEntitlement(basicPackEntitlement.id);
