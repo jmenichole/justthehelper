@@ -1,14 +1,10 @@
-// Slash registration disabled; kept for possible future use.
-import {
-  SlashCommandBuilder,
-  PermissionFlagsBits,
-  REST,
-  Routes
-} from "discord.js";
+// Owner-only: registered as User Install (see ownerCommands.js). Handler checks BOT_OWNER_ID.
+import { SlashCommandBuilder, REST, Routes } from "discord.js";
+import { asOwnerUserCommand } from "./commands/ownerCommands.js";
 import { log } from "./logger.js";
 import { grantFreeBuildToGuild, getEarlyAdopterStatus } from "./earlyAdopters.js";
 
-export const GrantCommandData = new SlashCommandBuilder()
+const grantCommandBuilder = new SlashCommandBuilder()
   .setName("grant")
   .setDescription("🎁 [Bot Owner] Grant a free build or Pro access")
   .addSubcommand((sub) =>
@@ -50,8 +46,9 @@ export const GrantCommandData = new SlashCommandBuilder()
         opt.setName("user").setDescription("User to revoke").setRequired(true)
       )
   )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-  .toJSON();
+  ;
+
+export const GrantCommandData = asOwnerUserCommand(grantCommandBuilder.toJSON());
 
 function isBotOwner(userId) {
   const ownerId = process.env.BOT_OWNER_ID;

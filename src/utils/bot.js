@@ -65,14 +65,16 @@ client.once("clientReady", async () => {
   const { startHealthServer } = await import("./health.js");
   startHealthServer(client);
 
-  // Register slash commands globally (/announce is owner-gated in handler)
+  // /setup = guild install (all servers). /grant + /announce = user install (owner account only).
   try {
     const { AnnounceCommandData } = await import("./announce.js");
+    const { GrantCommandData } = await import("./grant.js");
+    const { asGuildCommand } = await import("./commands/ownerCommands.js");
     const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
     await rest.put(Routes.applicationCommands(client.user.id), {
-      body: [SetupCommandData, AnnounceCommandData]
+      body: [asGuildCommand(SetupCommandData), AnnounceCommandData, GrantCommandData]
     });
-    log("Registered /setup and /announce commands");
+    log("Registered /setup (guild), /announce + /grant (user-install owner)");
   } catch (err) {
     log(`Command registration failed: ${err.message}`);
   }
@@ -102,10 +104,12 @@ client.on("interactionCreate", async (i) => {
   if (await handleTicketInteraction(i, client)) return;
 
   const { handleAnnounceInteraction } = await import("./announce.js");
+  const { handleGrantInteraction } = await import("./grant.js");
   handleSetupInteraction(i, client);
   handleOnboardingComponent(i, client);
   handlePostBuildButtons(i, client);
   handleAnnounceInteraction(i, client);
+  handleGrantInteraction(i, client);
 });
 
 // DM buyers immediately when a new purchase comes in while the bot is online

@@ -1,13 +1,9 @@
 // Owner-only broadcast (/announce). Gated by BOT_OWNER_ID in handleAnnounceInteraction.
-import {
-  SlashCommandBuilder,
-  EmbedBuilder,
-  PermissionFlagsBits,
-  ChannelType
-} from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, ChannelType } from "discord.js";
 import { log } from "./logger.js";
+import { asOwnerUserCommand } from "./commands/ownerCommands.js";
 
-export const AnnounceCommandData = new SlashCommandBuilder()
+const announceCommandBuilder = new SlashCommandBuilder()
   .setName("announce")
   .setDescription("📣 [Bot Owner] Broadcast to all servers that installed the bot")
   .addStringOption((opt) =>
@@ -37,8 +33,9 @@ export const AnnounceCommandData = new SlashCommandBuilder()
       .setDescription("Optional extra paragraph appended to the message")
       .setRequired(false)
   )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-  .toJSON();
+  ;
+
+export const AnnounceCommandData = asOwnerUserCommand(announceCommandBuilder.toJSON());
 
 function supportLink() {
   return process.env.SUPPORT_SERVER_INVITE || "https://discord.gg/NEePze3rZd";
