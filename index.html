@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JustTheBuilder — AI-Powered Discord Server Setup</title>
-  <meta name="description" content="Automate your entire Discord server setup using advanced AI. Generate channels, roles, custom rules, FAQs, and welcome screens in under a minute.">
+  <meta name="description" content="Add JustTheBuilder to your server and run /setup run. AI builds channels, roles, permissions, rules, FAQ embeds, and support tickets in under a minute. Basic $3.99 · Pro $6.99/mo.">
   
   <!-- SEO Tags -->
   <meta property="og:title" content="JustTheBuilder — AI-Powered Discord Server Setup">
@@ -52,6 +52,15 @@
       font-family: 'Outfit', sans-serif;
       font-weight: 700;
       letter-spacing: -0.02em;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--color-gold);
     }
 
     /* --- Custom Scrollbar --- */
@@ -174,6 +183,65 @@
     .btn-secondary:hover {
       background: rgba(255, 255, 255, 0.1);
       transform: translateY(-2px);
+    }
+
+    .install-note {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 215, 0, 0.06);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      max-width: 520px;
+    }
+
+    .install-note strong {
+      color: var(--color-gold);
+    }
+
+    .steps-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 40px;
+      text-align: left;
+    }
+
+    .step-card {
+      flex: 1 1 200px;
+      max-width: 260px;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+    }
+
+    .step-card span {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--color-gold-glow);
+      color: var(--color-gold);
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+
+    .step-card h4 {
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .step-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin: 0;
     }
 
     /* --- Hero Section --- */
@@ -541,10 +609,11 @@
         <span>JustTheBuilder</span>
       </a>
       <nav>
+        <a href="#how-it-works">How It Works</a>
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
         <a href="https://discord.gg/NEePze3rZd" target="_blank" rel="noopener noreferrer">Support</a>
-        <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-sm" style="padding: 8px 16px; font-size: 0.85rem;" target="_blank" rel="noopener noreferrer">Add to Discord</a>
+        <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-sm" style="padding: 8px 16px; font-size: 0.85rem;" target="_blank" rel="noopener noreferrer">Add to Server</a>
       </nav>
     </div>
   </header>
@@ -556,13 +625,32 @@
         <img src="./assets/logo.png" alt="JustTheBuilder Bot Profile Icon">
       </div>
       <h1 style="margin-top: 24px;">Build Perfect Discord Servers<br>Using Advanced AI</h1>
-      <p>Automate your entire community infrastructure. Generate channels, precise permission overrides, matching roles, custom rules, FAQs, and welcome embeds in under a minute.</p>
+      <p>Automate your entire community infrastructure. Generate channels, precise permission overrides, matching roles, custom rules, FAQs, welcome embeds, and support tickets in under a minute.</p>
       
       <div class="hero-ctas">
         <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-          <i class="fa-brands fa-discord"></i> Add to Discord
+          <i class="fa-brands fa-discord"></i> Add to Server
         </a>
-        <a href="#features" class="btn btn-secondary">Learn More</a>
+        <a href="#how-it-works" class="btn btn-secondary">How It Works</a>
+      </div>
+      <p class="install-note"><strong>Add to Server</strong> on a server you own — then run <code>/setup run</code>. User Install is not required.</p>
+
+      <div class="steps-row" id="how-it-works">
+        <div class="step-card">
+          <span>1</span>
+          <h4>Invite the bot</h4>
+          <p>Use <strong>Add to Server</strong> (not “Add to My Apps”). You must be the server owner.</p>
+        </div>
+        <div class="step-card">
+          <span>2</span>
+          <h4>Run /setup run</h4>
+          <p>Answer a short DM interview, or use a fast-track preset on Pro.</p>
+        </div>
+        <div class="step-card">
+          <span>3</span>
+          <h4>Get a full build</h4>
+          <p>Roles, channels, permissions, pinned rules, FAQ, and ticket panel — with progress in your DMs.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -599,9 +687,9 @@
 
         <!-- Feature 4 -->
         <div class="feature-card">
-          <div class="feature-icon"><i class="fa-solid fa-file-export"></i></div>
-          <h3>Blueprint Portability</h3>
-          <p>Export your layout as a portable blueprint JSON, tweak it locally, import it to reconstruct setups instantly, or save configurations as reusable templates.</p>
+          <div class="feature-icon"><i class="fa-solid fa-ticket"></i></div>
+          <h3>Built-In Support Tickets</h3>
+          <p>Deploy a ticket panel with categories (help, billing, bugs, features). Anyone can open a private ticket; staff roles get pinged automatically.</p>
         </div>
       </div>
     </div>
@@ -626,11 +714,11 @@
           <ul class="pricing-benefits">
             <li><i class="fa-solid fa-circle-check"></i> 1 complete premium server build</li>
             <li><i class="fa-solid fa-circle-check"></i> AI custom channel & role generator</li>
-            <li><i class="fa-solid fa-circle-check"></i> Complete rules, FAQ & welcome embeds</li>
+            <li><i class="fa-solid fa-circle-check"></i> Rules, FAQ & welcome embeds (included in the build)</li>
             <li><i class="fa-solid fa-circle-check"></i> Precise, standard permission setups</li>
             <li><i class="fa-solid fa-circle-check"></i> Limit: up to 20 channels per build</li>
           </ul>
-          <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Get Started</a>
+          <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Add to Server</a>
         </div>
 
         <!-- Package 2 -->
@@ -642,17 +730,19 @@
           </div>
           <div class="price">$6.99<span> / mo</span></div>
           <ul class="pricing-benefits">
-            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> **Unlimited builds & rebuilds**</li>
-            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Access all Fast-Track Presets</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> <strong>Unlimited builds &amp; rebuilds</strong></li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> All fast-track presets (gaming, crypto, creator, support)</li>
             <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Built-in ticket system (categories + staff pings)</li>
-            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Custom post-build embed edits</li>
-            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Premium 💎 supporter role creation</li>
-            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Unlimited categories & channels</li>
-            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Upgraded, priority AI generation model</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Post-build embed edits via <code>/setup edit-message</code></li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Unlimited categories &amp; channels</li>
+            <li><i class="fa-solid fa-star" style="color: var(--color-purple);"></i> Repost embeds &amp; ticket panel without a full rebuild</li>
           </ul>
           <a href="https://discord.com/oauth2/authorize?client_id=1444203714759102585&permissions=8&scope=bot%20applications.commands" class="btn btn-primary" style="background: linear-gradient(135deg, var(--color-purple), #8e44ad); color: white; box-shadow: 0 4px 15px var(--color-purple-glow);" target="_blank" rel="noopener noreferrer">Subscribe Now</a>
         </div>
       </div>
+      <p style="text-align: center; margin-top: 32px; color: var(--text-muted); font-size: 0.95rem;">
+        Early installs may still have <strong style="color: var(--color-gold);">one free full build</strong> — run <code>/setup run</code> as server owner after inviting the bot.
+      </p>
     </div>
   </section>
 
@@ -673,7 +763,7 @@
       <div class="footer-flex">
         <div class="footer-brand">
           <h4>JustTheBuilder</h4>
-          <p>AI-Powered Discord Server setups in under a minute.</p>
+          <p>AI-powered Discord server setup in under a minute. Invite with Add to Server, then <code>/setup run</code>.</p>
         </div>
         <div class="footer-links">
           <div class="footer-column">
