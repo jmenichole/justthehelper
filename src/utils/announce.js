@@ -1,4 +1,4 @@
-// Slash registration disabled; kept for possible future use.
+// Owner-only broadcast (/announce). Gated by BOT_OWNER_ID in handleAnnounceInteraction.
 import {
   SlashCommandBuilder,
   EmbedBuilder,

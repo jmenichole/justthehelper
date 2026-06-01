@@ -65,13 +65,14 @@ client.once("clientReady", async () => {
   const { startHealthServer } = await import("./health.js");
   startHealthServer(client);
 
-  // Register slash commands globally
+  // Register slash commands globally (/announce is owner-gated in handler)
   try {
+    const { AnnounceCommandData } = await import("./announce.js");
     const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
     await rest.put(Routes.applicationCommands(client.user.id), {
-      body: [SetupCommandData]
+      body: [SetupCommandData, AnnounceCommandData]
     });
-    log("Registered /setup command");
+    log("Registered /setup and /announce commands");
   } catch (err) {
     log(`Command registration failed: ${err.message}`);
   }
@@ -83,9 +84,11 @@ client.on("interactionCreate", async (i) => {
   const { handleTicketInteraction } = await import("./tickets/handler.js");
   if (await handleTicketInteraction(i, client)) return;
 
+  const { handleAnnounceInteraction } = await import("./announce.js");
   handleSetupInteraction(i, client);
   handleOnboardingComponent(i, client);
   handlePostBuildButtons(i, client);
+  handleAnnounceInteraction(i, client);
 });
 
 // DM buyers immediately when a new purchase comes in while the bot is online
