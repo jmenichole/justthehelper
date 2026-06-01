@@ -37,7 +37,8 @@ export const SetupCommandData = {
             { name: "💎 Crypto/Web3", value: "crypto" },
             { name: "🎥 Content Creator", value: "content" },
             { name: "💼 Professional", value: "professional" },
-            { name: "🛡️ Support Server", value: "support" }
+            { name: "🛡️ Support Server", value: "support" },
+            { name: "💎 JustTheTip Support Server", value: "justthetip" }
           ]
         }
       ]

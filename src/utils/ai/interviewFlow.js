@@ -4,6 +4,8 @@ import { applyBlueprint } from "../applyBlueprint.js";
 import { log } from "../logger.js";
 import { sendProgress } from "../progress.js";
 import { inferRuleTemplate, inferFaqTemplate } from "./ruleTemplates.js";
+import fs from "fs";
+import path from "path";
 
 /**
  * Attempt to extract a JSON object from an arbitrary AI string response.
@@ -216,6 +218,27 @@ const PRESET_ANSWERS = {
 };
 
 export async function runInterview(user, guild, client, preset = null, isPremium = false) {
+  if (preset === "justthetip") {
+    const dm = await user.createDM();
+    await dm.send("💎 **Instant Builder Activated**: Loading custom support server blueprint...");
+    const blueprintPath = path.resolve("templates", "justthetip.json");
+    if (fs.existsSync(blueprintPath)) {
+      try {
+        const blueprint = JSON.parse(fs.readFileSync(blueprintPath, "utf-8"));
+        await dm.send("✨ Blueprint validated. Building your server now...");
+        await applyBlueprint(guild, blueprint, { ownerUser: user });
+        return true;
+      } catch (err) {
+        log(`Instant build failed: ${err.message}`);
+        await dm.send(`❌ Build failed: ${err.message}`);
+        return false;
+      }
+    } else {
+      await dm.send("❌ Blueprint file templates/justthetip.json not found.");
+      return false;
+    }
+  }
+
   const questions = [
     { text: "What is this server about?", suggestions: SUGGESTION_PACKS.serverType },
     { text: "Describe the vibe/style you want.", suggestions: SUGGESTION_PACKS.styles },

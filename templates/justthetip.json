@@ -1,0 +1,152 @@
+{
+  "style": {
+    "emojiPrefix": "💎",
+    "theme": "neon-gold"
+  },
+  "community": true,
+  "roles": [
+    {
+      "name": "Founder",
+      "color": "#FFD700",
+      "permissions": ["Administrator"],
+      "isStaff": true
+    },
+    {
+      "name": "Support Agent",
+      "color": "#3498DB",
+      "permissions": ["ManageMessages", "EmbedLinks", "AttachFiles", "TimeoutMembers", "KickMembers", "BanMembers"],
+      "isModerator": true
+    },
+    {
+      "name": "Premium Builder",
+      "color": "#9B59B6",
+      "permissions": ["ChangeNickname", "UseExternalEmojis", "AddReactions"]
+    },
+    {
+      "name": "Builder",
+      "color": "#2ECC71"
+    }
+  ],
+  "categories": {
+    "📢 INFORMATION": [
+      {
+        "name": "welcome",
+        "type": "text",
+        "message": {
+          "title": "👋 Welcome to JustTheBuilder Support!",
+          "body": "Welcome to the official support server for **JustTheBuilder** — the ultimate AI-powered Discord server builder!\n\nHere you can get help, request features, report bugs, and showcase your awesome server builds.\n\n**Quick Start:**\n👉 Read our guidelines in <#rules>\n👉 Check frequently asked questions in <#faq>\n👉 Chat with fellow builders in <#general>\n\nThank you for inviting JustTheBuilder to your server! 🚀"
+        },
+        "permissionsPreset": "public-readonly",
+        "order": 0
+      },
+      {
+        "name": "rules",
+        "type": "text",
+        "message": {
+          "title": "📜 Server Guidelines",
+          "body": "Welcome! Please follow these simple guidelines to keep our community helpful and friendly:\n\n1. **Be Respectful:** Treat fellow builders and staff with kindness. No harassment, hate speech, or toxicity.\n2. **No Spamming:** Avoid spamming messages, invites, or bot commands in public channels.\n3. **Use the Right Channels:** Post bug reports in <#bug-reports>, support requests in <#create-ticket>, and general chatter in <#general>.\n4. **No Direct Messages to Staff:** Keep support questions in open tickets so our team can help you efficiently.\n5. **Follow Discord Terms of Service:** All standard Discord guidelines apply here.\n\nViolation of these rules may lead to warning, mute, or ban by staff."
+        },
+        "permissionsPreset": "public-readonly",
+        "order": 1
+      },
+      {
+        "name": "announcements",
+        "type": "announcement",
+        "permissionsPreset": "announcement-lock",
+        "order": 2
+      },
+      {
+        "name": "faq",
+        "type": "text",
+        "message": {
+          "title": "❓ Frequently Asked Questions",
+          "body": "**Q: How do I invite the bot to my server?**\nA: You can invite it directly from our bot profile on Discord, or ask for the invite link in <#general>.\n\n**Q: What is the Basic Build Pack?**\nA: The Basic Build Pack is a one-time purchase ($3.99) that grants you **one complete premium server build** (unlimited channels, roles, full AI customization, auto-written rules, and FAQs).\n\n**Q: What is the Pro Builder subscription?**\nA: The Pro Builder subscription ($6.99/mo) unlocks **unlimited server builds and rebuilds**, access to all **Fast-Track Presets** (Gaming, Crypto, Content, etc.), and the ability to edit bot-made embeds post-build using `/setup edit-message`.\n\n**Q: I had the bot installed early, do I get anything?**\nA: Yes! All 76 early adopter servers get **one completely free full AI server setup** as a loyalty gift. Just run `/setup run` in your server to claim it.\n\n**Q: Can I edit the server structure after the bot builds it?**\nA: Absolutely! The bot builds standard Discord channels and roles. You have full ownership and can rename, delete, or add anything you want."
+        },
+        "permissionsPreset": "public-readonly",
+        "order": 3
+      }
+    ],
+    "💬 COMMUNITY": [
+      {
+        "name": "general",
+        "type": "text",
+        "order": 0
+      },
+      {
+        "name": "bot-commands",
+        "type": "text",
+        "order": 1
+      },
+      {
+        "name": "showcase",
+        "type": "text",
+        "topic": "Show off your server layouts built by JustTheBuilder!",
+        "order": 2
+      },
+      {
+        "name": "suggestions",
+        "type": "forum",
+        "topic": "Submit and discuss feature suggestions for the bot.",
+        "defaultAutoArchiveDuration": 1440,
+        "order": 3
+      }
+    ],
+    "🛡️ CLIENT SUPPORT": [
+      {
+        "name": "create-ticket",
+        "type": "text",
+        "message": {
+          "title": "🎟️ Open a Support Ticket",
+          "body": "Need assistance with billing, subscriptions, or custom configurations?\n\nOur team is here to help! \n\n*Click the button below (or use a ticket command when available) to open a private ticket.*"
+        },
+        "permissionsPreset": "public-readonly",
+        "order": 0
+      },
+      {
+        "name": "bug-reports",
+        "type": "forum",
+        "topic": "Report any bugs or errors you encounter while using the bot.",
+        "defaultAutoArchiveDuration": 1440,
+        "order": 1
+      }
+    ],
+    "🔒 STAFF AREA": [
+      {
+        "name": "staff-chat",
+        "type": "text",
+        "permissionsPreset": "staff-private",
+        "order": 0
+      },
+      {
+        "name": "staff-logs",
+        "type": "text",
+        "permissionsPreset": "staff-private",
+        "readOnly": true,
+        "order": 1
+      }
+    ]
+  },
+  "categoryPrivacy": {
+    "🔒 STAFF AREA": "staff-private"
+  },
+  "private": {
+    "staff": ["staff-chat", "staff-logs"]
+  },
+  "welcomeScreen": {
+    "description": "Welcome to JustTheBuilder Support Server!",
+    "prompts": [
+      {
+        "title": "Read guidelines",
+        "channel": "rules",
+        "emoji": "📜",
+        "description": "Keep our community friendly!"
+      },
+      {
+        "title": "Chat with builders",
+        "channel": "general",
+        "emoji": "💬",
+        "description": "Say hello!"
+      }
+    ]
+  }
+}
