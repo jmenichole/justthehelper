@@ -119,20 +119,22 @@ function findPanelChannel(guild, panelChannelName) {
 /**
  * Post or refresh ticket panel in the configured channel.
  */
-export async function ensureTicketPanel(channel, client, config) {
+export async function ensureTicketPanel(channel, client, config, { forceNew = false } = {}) {
   if (!channel?.isTextBased?.() || !config?.enabled) return null;
   try {
-    const recent = await channel.messages.fetch({ limit: 25 });
-    const existing = recent.find(
-      (m) =>
-        m.author.id === client.user.id &&
-        m.components?.some((row) =>
-          row.components?.some((c) => c.customId === SELECT_ID)
-        )
-    );
-    if (existing) {
-      await existing.edit(buildTicketPanelPayload(config));
-      return existing;
+    if (!forceNew) {
+      const recent = await channel.messages.fetch({ limit: 25 });
+      const existing = recent.find(
+        (m) =>
+          m.author.id === client.user.id &&
+          m.components?.some((row) =>
+            row.components?.some((c) => c.customId === SELECT_ID)
+          )
+      );
+      if (existing) {
+        await existing.edit(buildTicketPanelPayload(config));
+        return existing;
+      }
     }
     return channel.send(buildTicketPanelPayload(config));
   } catch (err) {
@@ -141,11 +143,11 @@ export async function ensureTicketPanel(channel, client, config) {
   }
 }
 
-export async function deployTicketPanelForGuild(guild, client, config) {
+export async function deployTicketPanelForGuild(guild, client, config, { forceNew = false } = {}) {
   if (!config?.enabled) return false;
   const channel = findPanelChannel(guild, config.panelChannel);
   if (!channel) return false;
-  await ensureTicketPanel(channel, client, config);
+  await ensureTicketPanel(channel, client, config, { forceNew });
   return true;
 }
 

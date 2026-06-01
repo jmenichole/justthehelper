@@ -42,7 +42,9 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
     if (ownerUser) await sendProgress(ownerUser, "Setting up support ticket panel…");
     saveTicketConfig(guild.id, blueprint.tickets, blueprint);
     try {
-      await deployTicketPanelForGuild(guild, guild.client, blueprint.tickets);
+      await deployTicketPanelForGuild(guild, guild.client, blueprint.tickets, {
+        forceNew: blueprint.lastPreset === "justthetip"
+      });
     } catch (err) {
       log(`Ticket panel deploy failed: ${err.message}`);
       if (ownerUser) await sendProgress(ownerUser, `⚠️ Ticket panel failed: ${err.message}`);
@@ -69,7 +71,7 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
           : "";
     await sendProgress(
       ownerUser,
-      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}${embedNote}${blueprint.tickets?.enabled ? "\n🎟️ Tickets: live in #create-ticket" : ""}\n\nMissing embeds? /setup post-messages\nTicket panel: /setup ticket-panel`
+      `🎉 Your server is ready!\n⏱️ Build time: ${buildSeconds} seconds\n📁 Categories: ${categoryCount}\n📄 Channels: ${channelCount}\n🧩 Roles: ${roleCount}${embedNote}${blueprint.tickets?.enabled ? "\n🎟️ Tickets: #create-ticket (Support & Bugs · Billing · Feature)" : ""}\n\nRecovery only: /setup post-messages or /setup ticket-panel`
     );
   }
 

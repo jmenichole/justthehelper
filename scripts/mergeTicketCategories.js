@@ -21,27 +21,9 @@ if (!guildId) {
   process.exit(1);
 }
 
-/** Merged categories — help + bug are now one option */
-export const MERGED_TICKET_CATEGORIES = [
-  {
-    id: "support",
-    label: "Support & Bugs",
-    description: "Help, billing questions, or report a bug (include steps to reproduce)",
-    emoji: "🛟"
-  },
-  {
-    id: "billing",
-    label: "Billing",
-    description: "Purchases, Basic Pack, or Pro subscription",
-    emoji: "💳"
-  },
-  {
-    id: "feature",
-    label: "Feature Request",
-    description: "Suggest improvements for JustTheBuilder",
-    emoji: "✨"
-  }
-];
+import { JUSTTHETIP_TICKET_CATEGORIES } from "../src/utils/presets/justthetip.js";
+
+const MERGED_TICKET_CATEGORIES = JUSTTHETIP_TICKET_CATEGORIES;
 
 function patchJsonFile(filePath, patchTickets) {
   if (!fs.existsSync(filePath)) return false;
