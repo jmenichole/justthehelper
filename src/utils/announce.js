@@ -161,6 +161,15 @@ export async function handleAnnounceInteraction(interaction, client) {
   const embed = buildEmbed(template, customMessage);
 
   const guilds = [...client.guilds.cache.values()];
+  const { logStaffUsage } = await import("./staffLog.js");
+  logStaffUsage(client, {
+    action: "📣 Announce broadcast started",
+    guild: interaction.guild,
+    user: interaction.user,
+    color: 0x9b59b6,
+    detail: `template \`${template}\` · target \`${target}\` · **${guilds.length}** servers`
+  });
+
   await interaction.reply({
     ephemeral: true,
     content: [
@@ -227,4 +236,12 @@ export async function handleAnnounceInteraction(interaction, client) {
   ].filter(Boolean);
 
   await interaction.followUp({ ephemeral: true, content: lines.join("\n") });
+
+  logStaffUsage(client, {
+    action: "📣 Announce broadcast finished",
+    guild: interaction.guild,
+    user: interaction.user,
+    color: 0x9b59b6,
+    detail: lines.join("\n").slice(0, 3500)
+  });
 }

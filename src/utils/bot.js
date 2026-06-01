@@ -80,7 +80,24 @@ client.once("clientReady", async () => {
 
 client.on("guildCreate", (guild) => handleGuildCreate(guild, client));
 
+client.on("guildDelete", (guild) => {
+  import("./staffLog.js").then(({ logStaffUsage }) =>
+    logStaffUsage(client, {
+      action: "Bot removed from server",
+      guild,
+      user: null,
+      color: 0xe74c3c,
+      detail: `Member count: ${guild.memberCount ?? "?"}`
+    })
+  );
+});
+
 client.on("interactionCreate", async (i) => {
+  if (i.isChatInputCommand()) {
+    const { logStaffSlashCommand } = await import("./staffLog.js");
+    logStaffSlashCommand(i);
+  }
+
   const { handleTicketInteraction } = await import("./tickets/handler.js");
   if (await handleTicketInteraction(i, client)) return;
 
@@ -94,6 +111,17 @@ client.on("interactionCreate", async (i) => {
 // DM buyers immediately when a new purchase comes in while the bot is online
 client.on("entitlementCreate", async (entitlement) => {
   log(`New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}`);
+  try {
+    const user = await client.users.fetch(entitlement.userId);
+    const { logStaffUsage } = await import("./staffLog.js");
+    logStaffUsage(client, {
+      action: "💰 Purchase / entitlement",
+      guild: null,
+      user,
+      color: 0xf1c40f,
+      detail: `SKU \`${entitlement.skuId}\` · type ${entitlement.type ?? "?"}`
+    });
+  } catch {}
   const basicPackId = process.env.PREMIUM_SKU_ID;
   const subId = process.env.SUBSCRIPTION_SKU_ID;
   const supportLink = process.env.SUPPORT_SERVER_INVITE || "https://discord.gg/NEePze3rZd";

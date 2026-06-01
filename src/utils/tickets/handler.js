@@ -282,6 +282,14 @@ async function closeTicketChannel(channel, interaction) {
   }
 
   await interaction.reply({ ephemeral: true, content: "🔒 Closing ticket in 3 seconds…" });
+  const { logStaffUsage } = await import("../staffLog.js");
+  logStaffUsage(channel.client, {
+    action: "🔒 Ticket closed",
+    guild: channel.guild,
+    user: interaction.user,
+    color: 0x95a5a6,
+    detail: channel.name
+  });
   setTimeout(async () => {
     try {
       await channel.delete("Ticket closed");
@@ -315,6 +323,14 @@ export async function handleTicketInteraction(interaction, client) {
       if (alreadyOpen) {
         await interaction.editReply({ content: `You already have an open **${category.label}** ticket: ${channel}` });
       } else {
+        const { logStaffUsage } = await import("../staffLog.js");
+        logStaffUsage(client, {
+          action: "🎟️ Ticket opened",
+          guild: interaction.guild,
+          user: interaction.user,
+          color: 0x3498db,
+          detail: `**${category.label}** · #${num} · ${channel}`
+        });
         await interaction.editReply({
           content: `✅ **${category.label}** ticket #${num} created: ${channel}\nStaff have been notified.`
         });

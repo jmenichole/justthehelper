@@ -62,6 +62,13 @@ export async function applyBlueprint(guild, blueprint, { ownerUser } = {}) {
   persistBlueprint(guild.id, blueprint, { buildSeconds, categoryCount, channelCount, roleCount });
   logUsage(guild.id, { buildSeconds, categoryCount, channelCount, roleCount });
 
+  try {
+    const { logStaffBuildComplete } = await import("./staffLog.js");
+    logStaffBuildComplete(guild.client, guild, { buildSeconds, categoryCount, channelCount, roleCount }, ownerUser, blueprint);
+  } catch (err) {
+    log(`staffLog build: ${err.message}`);
+  }
+
   if (ownerUser) {
     const embedNote =
       messageResults.failed.length > 0
