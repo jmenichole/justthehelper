@@ -25,12 +25,15 @@ Rules:
 1. Use dash-case for channel names; avoid duplicate emoji prefixes.
 2. Prefer permissionsPreset over raw permissions when matching known patterns.
 3. For staff-only or private sections use categoryPrivacy or channel private/preset.
-4. Provide message objects for info channels (welcome, rules, about, faq) with title & body.
-5. Return ONLY raw JSON (no backticks unless explicitly requested by user).
-6. Use media type for clip/video/image sharing channels; use forum for discussion boards.
-7. Provide at least one community chat channel.
-8. For announcement channel use permissionsPreset "announcement-lock".
-9. Include defaultAutoArchiveDuration for forum channels (60,1440,4320,10080) if appropriate.
-10. Avoid trailing commas and ensure valid JSON.
+4. When interview says auto-embeds=yes: EVERY info channel (welcome, rules, about, faq) MUST have message { title, body } with real copy.
+5. rules channel: permissionsPreset "public-readonly", pinMessage true, topic set.
+6. welcome channel: message with greeting + what the server is + where to go next.
+7. Return ONLY raw JSON (no backticks).
+8. Use media type for clip/video channels; forum for topic boards with defaultAutoArchiveDuration if needed.
+9. At least one public general chat channel.
+10. announcements channel: type announcement + permissionsPreset "announcement-lock".
+11. voice-lounge: type voice when interview requests voice.
+12. Honor extras: ticket channels, verified-only presets, links woven into welcome/about body text.
+13. Avoid trailing commas; valid JSON only.
 
 Output: A single JSON object matching the schema.

@@ -2,37 +2,42 @@ import { askAI } from "./gateway.js";
 import { validateBlueprint, buildRepairPrompt, formatValidationErrors } from "./schemas.js";
 import { applyBlueprint } from "../applyBlueprint.js";
 import { log } from "../logger.js";
-import { sendProgress } from "../progress.js";
-import { inferRuleTemplate, inferFaqTemplate } from "./ruleTemplates.js";
+import {
+  A,
+  INTERVIEW_QUESTIONS,
+  PRESET_ANSWERS,
+  SUGGESTION_PACKS,
+  buildInterviewBrief,
+  mapRuleTemplateChoice,
+  parseYes
+} from "./interviewConfig.js";
+import {
+  applyBranding,
+  applyExtras,
+  applyInterviewMeta,
+  ensureVoiceAndAnnouncements,
+  injectInfoEmbeds
+} from "./interviewFinalize.js";
 import fs from "fs";
 import path from "path";
 
-/**
- * Attempt to extract a JSON object from an arbitrary AI string response.
- * Performs lightweight healing: remove fences, trailing commas, quote bare keys.
- * Returns parsed object or null if irreparable.
- * @param {string} raw Raw AI response text
- * @returns {Object|null}
- */
 function selfHealJSON(raw) {
   if (!raw) return null;
   let cleaned = raw.trim();
-  // Strip code fences & language hints
   cleaned = cleaned.replace(/```(json)?/gi, "");
-  // Remove leading explanation lines before first {
   const firstBrace = cleaned.indexOf("{");
   if (firstBrace > 0) cleaned = cleaned.slice(firstBrace);
-  // Remove trailing text after final }
   const lastBrace = cleaned.lastIndexOf("}");
   if (lastBrace === -1) return null;
   cleaned = cleaned.slice(0, lastBrace + 1);
-  // Common repairs: unquoted keys (simple heuristic), trailing commas
   cleaned = cleaned.replace(/,(\s*[}\]])/g, "$1");
-  // Attempt parse
-  try { return JSON.parse(cleaned); } catch {}
-  // Heuristic: quote bare keys (simple regex, may over-match)
+  try {
+    return JSON.parse(cleaned);
+  } catch {}
   cleaned = cleaned.replace(/([,{\n\r\t ]+)([A-Za-z0-9_]+):/g, (m, pre, key) => `${pre}"${key}":`);
-  try { return JSON.parse(cleaned); } catch {}
+  try {
+    return JSON.parse(cleaned);
+  } catch {}
   return null;
 }
 
@@ -41,181 +46,77 @@ const FEW_SHOT_VALID = [
     style: { emojiPrefix: "💸", theme: "neon-gold" },
     roles: [
       { name: "Admin", permissions: ["Administrator"], color: "#FFD700" },
-      { name: "Moderator", permissions: ["ManageMessages","EmbedLinks"], color: "#DAA520" },
+      { name: "Moderator", permissions: ["ManageMessages", "EmbedLinks"], color: "#DAA520" },
       { name: "Member", color: "#5865F2" }
     ],
     categories: {
       "SERVER INFO": [
-        { name: "welcome", type: "text", message: { title: "Welcome", body: "Welcome to the server!" } },
-        { name: "rules", type: "text", permissionsPreset: "public-readonly", message: { title: "Rules", body: "1. Be kind\n2. No spam" } }
+        {
+          name: "welcome",
+          type: "text",
+          message: { title: "Welcome", body: "Welcome to the server! Read #rules then chat in #general." }
+        },
+        {
+          name: "rules",
+          type: "text",
+          permissionsPreset: "public-readonly",
+          pinMessage: true,
+          message: { title: "Rules", body: "1. Be kind\n2. No spam" }
+        },
+        { name: "about", type: "text", message: { title: "About", body: "About this community." } },
+        { name: "faq", type: "text", message: { title: "FAQ", body: "**Q: How do I start?**\nA: Read rules and say hi." } }
       ],
-      COMMUNITY: [ { name: "chat", type: "text" }, { name: "clips", type: "media" } ]
-    }
-  },
-  {
-    style: { theme: "streamer-dark", emojiPrefix: "🎥" },
-    roles: [
-      { name: "Admin", permissions: ["Administrator"], color: "#E91E63" },
-      { name: "Mod", permissions: ["ManageMessages"], color: "#9C27B0" },
-      { name: "Subscriber" }
-    ],
-    categories: {
-      "INFO": [ { name: "welcome", type: "text" } ],
-      "LIVE": [ { name: "live-chat", type: "text" }, { name: "voice-lounge", type: "voice" } ]
-    }
-  },
-  {
-    style: { theme: "minimal-clean" },
-    roles: [ { name: "Admin", permissions: ["Administrator"] }, { name: "Moderator", permissions: ["ManageMessages"] }, { name: "Verified" } ],
-    categories: {
-      "SERVER INFO": [ { name: "welcome", type: "text" } ],
-      COMMUNITY: [ { name: "chat", type: "text" }, { name: "forum-topics", type: "forum", defaultAutoArchiveDuration: 1440 } ]
+      COMMUNITY: [
+        { name: "general-chat", type: "text" },
+        { name: "announcements", type: "announcement", permissionsPreset: "announcement-lock" },
+        { name: "voice-lounge", type: "voice" }
+      ]
     }
   }
 ];
 
-// An invalid example and its corrected form to guide AI repair reasoning
 const INVALID_AND_CORRECTED = {
   invalid: '{ roles: [ { name: Admin } ], categories: { INFO: [ "welcome" ] } }',
   corrected: {
-    roles: [ { name: "Admin", permissions: ["Administrator"] } ],
-    categories: { INFO: [ { name: "welcome", type: "text" } ] }
+    roles: [{ name: "Admin", permissions: ["Administrator"] }],
+    categories: { INFO: [{ name: "welcome", type: "text" }] }
   }
 };
 
-/**
- * Issue AI request to convert interview answers into a blueprint object.
- * Applies few-shot examples and invalid/corrected pair for guidance.
- * @param {string[]} answers Collected interview answers
- * @param {import('discord.js').User} user User (for potential future personalization)
- * @returns {Promise<Object|null>} Parsed blueprint or null on failure
- */
-async function generateBlueprint(answers, user) {
+async function generateBlueprint(answers, guild) {
+  const brief = buildInterviewBrief(answers, guild);
+  let systemExtra = "";
+  try {
+    const promptPath = path.resolve("src/utils/ai/promptTemplate.md");
+    if (fs.existsSync(promptPath)) systemExtra = fs.readFileSync(promptPath, "utf-8");
+  } catch {}
+
   const messages = [
     {
       role: "system",
       content: [
-        "You convert interview answers into a STRICT JSON blueprint.",
+        "You convert interview answers into a STRICT JSON blueprint for a complete Discord server.",
         "Return ONLY JSON (no prose, no backticks).",
-        "If unsure, make conservative choices."
-      ].join(" \n")
+        "Deliver a one-and-done setup: channels, roles, permissions, and message embeds where requested.",
+        systemExtra
+      ].join("\n")
     },
     {
       role: "system",
       content:
-        "Valid examples:\n" + FEW_SHOT_VALID.map(j => JSON.stringify(j)).join("\n\n") +
-        "\n\nInvalid example (do NOT emulate):\n" + INVALID_AND_CORRECTED.invalid +
-        "\n\nCorrected form:\n" + JSON.stringify(INVALID_AND_CORRECTED.corrected)
+        "Valid example:\n" +
+        JSON.stringify(FEW_SHOT_VALID[0]) +
+        "\n\nInvalid (do NOT emulate):\n" +
+        INVALID_AND_CORRECTED.invalid +
+        "\n\nCorrected:\n" +
+        JSON.stringify(INVALID_AND_CORRECTED.corrected)
     },
-    { role: "user", content: answers.join("\n") }
+    { role: "user", content: brief }
   ];
 
   const raw = await askAI(messages);
-  let parsed = selfHealJSON(raw);
-  if (!parsed) {
-    log("AI JSON parse failed initial attempt.");
-  }
-  return parsed;
+  return selfHealJSON(raw);
 }
-
-/**
- * Conduct interactive DM interview, generate and validate blueprint, and build server.
- * @param {import('discord.js').User} user
- * @param {import('discord.js').Guild} guild
- * @param {import('discord.js').Client} client
- */
-const SUGGESTION_PACKS = {
-  serverType: [
-    "Gaming community",
-    "Crypto/NFT project",
-    "Content creator fan server",
-    "Study/education group",
-    "Business/professional network",
-    "Support/help desk"
-  ],
-  styles: [
-    "neon-gold (vibrant, energetic)",
-    "minimal-clean (simple, professional)",
-    "dark-cyberpunk (edgy, tech)",
-    "pastel-cozy (warm, friendly)",
-    "streamer-purple (gaming, content)"
-  ],
-  categories: [
-    "SERVER INFO, COMMUNITY, GENERAL",
-    "WELCOME, RULES, CHAT, VOICE",
-    "INFO, SUPPORT, HELP, GENERAL",
-    "ANNOUNCEMENTS, DISCUSSION, MEDIA",
-    "STAFF, PUBLIC, COMMUNITY"
-  ],
-  roles: [
-    "Admin, Moderator, Member",
-    "Owner, Admin, Mod, VIP, Verified",
-    "Admin, Support, Premium, Member",
-    "Founder, Staff, Community Manager"
-  ],
-  privateAreas: [
-    "staff-chat, mod-logs",
-    "admin-only, team-planning",
-    "staff, moderator-chat, private-logs",
-    "management, internal"
-  ],
-  ruleTemplates: [
-    "Auto-detect from server type",
-    "Gaming community rules",
-    "Crypto/DeFi guidelines",
-    "Support server rules",
-    "Content creator rules",
-    "Professional/business rules"
-  ]
-};
-
-const PRESET_ANSWERS = {
-  gaming: [
-    "A gaming community for players to hang out, find groups, and discuss games.",
-    "neon-gold (vibrant, energetic)",
-    "WELCOME, RULES, ANNOUNCEMENTS, GENERAL CHAT, LFG, VOICE, CLIPS",
-    "yes",
-    "Admin, Moderator, VIP, Member",
-    "staff-chat, mod-logs",
-    "yes"
-  ],
-  crypto: [
-    "A crypto/NFT project server for holders and roadmap updates.",
-    "dark-cyberpunk (edgy, tech)",
-    "OFFICIAL LINKS, ANNOUNCEMENTS, GENERAL, PRICE-TALK, HOLDERS-ONLY",
-    "yes",
-    "Founder, Mod, Holder, Whale, Member",
-    "team-chat, collab-requests",
-    "yes"
-  ],
-  content: [
-    "A community for content creators and fans to share videos and streams.",
-    "streamer-purple (gaming, content)",
-    "WELCOME, ANNOUNCEMENTS, LIVE-NOTIFS, GENERAL, FAN-ART, CLIPS",
-    "yes",
-    "Streamer, Mod, Subscriber, Follower",
-    "mod-chat, planning",
-    "yes"
-  ],
-  professional: [
-    "A professional network for business discussions and networking.",
-    "minimal-clean (simple, professional)",
-    "WELCOME, RESOURCES, NETWORKING, JOBS, GENERAL",
-    "yes",
-    "Admin, Moderator, Professional, Recruiter",
-    "admin-only, reports",
-    "yes"
-  ],
-  support: [
-    "A product support server for helping users with issues.",
-    "pastel-cozy (warm, friendly)",
-    "WELCOME, FAQ, ANNOUNCEMENTS, SUPPORT-TICKETS, GENERAL",
-    "yes",
-    "Admin, Support Agent, Customer",
-    "ticket-logs, staff-area",
-    "yes"
-  ]
-};
 
 export async function runInterview(user, guild, client, preset = null, isPremium = false) {
   if (preset === "justthetip") {
@@ -233,107 +134,99 @@ export async function runInterview(user, guild, client, preset = null, isPremium
         await dm.send(`❌ Build failed: ${err.message}`);
         return false;
       }
-    } else {
-      await dm.send("❌ Blueprint file templates/justthetip.json not found.");
-      return false;
     }
+    await dm.send("❌ Blueprint file templates/justthetip.json not found.");
+    return false;
   }
-
-  const questions = [
-    { text: "What is this server about?", suggestions: SUGGESTION_PACKS.serverType },
-    { text: "Describe the vibe/style you want.", suggestions: SUGGESTION_PACKS.styles },
-    { text: "List categories you want (comma-separated).", suggestions: SUGGESTION_PACKS.categories },
-    { text: "Do you want auto-written rules/about/FAQ? (yes/no)", suggestions: null },
-    { text: "List roles with any special permissions.", suggestions: SUGGESTION_PACKS.roles },
-    { text: "List any private/staff channels or role-restricted areas.", suggestions: SUGGESTION_PACKS.privateAreas },
-    { text: "Do you want community / welcome screen enabled? (yes/no)", suggestions: null }
-  ];
 
   const answers = [];
   const dm = await user.createDM();
-  let selectedRuleTemplate = null;
+  let selectedRuleTemplate = preset && PRESET_ANSWERS[preset] ? preset : null;
+
+  await dm.send(
+    [
+      "👋 **JustTheBuilder setup interview** (~10 questions)",
+      "Answer in DMs. Pick a **number** from suggestions or type your own.",
+      "Goal: **one run** → channels, roles, permissions, and embeds."
+    ].join("\n")
+  );
 
   if (preset && PRESET_ANSWERS[preset]) {
     answers.push(...PRESET_ANSWERS[preset]);
-    selectedRuleTemplate = preset;
-    await user.send(`⚡ **Fast-Track Activated**: Generating blueprint for **${preset}**...`);
+    await user.send(`⚡ **Fast-Track**: Using **${preset}** defaults…`);
   } else {
-    // Interactive Loop
-  async function ask(questionObj) {
-    const { text, suggestions } = questionObj;
-    let msg = `📋 **${text}**`;
-    if (suggestions && suggestions.length) {
-      msg += "\n\n💡 **Suggestions:**";
-      suggestions.forEach((s, i) => {
-        msg += `\n  ${i + 1}. ${s}`;
-      });
-      msg += "\n\n_Type your answer or pick a number (1-" + suggestions.length + ")_";
+    async function ask(questionObj) {
+      const { text, suggestions } = questionObj;
+      let msg = `📋 **${text}**`;
+      if (suggestions?.length) {
+        msg += "\n\n💡 **Suggestions:**";
+        suggestions.forEach((s, i) => {
+          msg += `\n  ${i + 1}. ${s}`;
+        });
+        msg += `\n\n_Type your answer or a number (1-${suggestions.length})_`;
+      }
+      await dm.send(msg);
+      try {
+        const collected = await dm.awaitMessages({
+          filter: (m) => m.author.id === user.id,
+          max: 1,
+          time: 180000
+        });
+        let answer = collected.first()?.content?.trim() || "";
+        if (suggestions && /^\d+$/.test(answer)) {
+          const idx = parseInt(answer, 10) - 1;
+          if (idx >= 0 && idx < suggestions.length) {
+            answer = suggestions[idx];
+            await dm.send(`✅ Selected: **${answer}**`);
+          }
+        }
+        return answer;
+      } catch {
+        await dm.send("⏱️ Timeout — skipping this question (you can rerun `/setup run` later).");
+        return "";
+      }
     }
-    await dm.send(msg);
-    try {
-      const collected = await dm.awaitMessages({
-        filter: m => m.author.id === user.id,
-        max: 1,
-        time: 180000
-      });
-      let answer = collected.first()?.content?.trim() || "";
-      // Parse numeric choice
-      if (suggestions && /^\d+$/.test(answer)) {
-        const idx = parseInt(answer, 10) - 1;
-        if (idx >= 0 && idx < suggestions.length) {
-          answer = suggestions[idx];
-          await dm.send(`✅ Selected: **${answer}**`);
+
+    for (const q of INTERVIEW_QUESTIONS) {
+      const a = await ask(q);
+      answers.push(a);
+
+      if (q.id === "info_embeds" && parseYes(a)) {
+        const templateChoice = await ask({
+          text: "Which rules/FAQ style fits best?",
+          suggestions: SUGGESTION_PACKS.ruleTemplates
+        });
+        selectedRuleTemplate = mapRuleTemplateChoice(templateChoice);
+      }
+
+      if (q.id === "extras" && /links:/i.test(a) && /describe|paste|next/i.test(a)) {
+        const linksDetail = await ask({
+          text: "Paste links or text for welcome/about (one message, or type skip):",
+          suggestions: ["skip"]
+        });
+        if (linksDetail && !/^skip$/i.test(linksDetail)) {
+          answers[A.EXTRAS] = `Links: ${linksDetail}`;
         }
       }
-      log(`Interview answer for '${text.slice(0,30)}...': ${answer.slice(0,60)}`);
-      return answer;
-    } catch (err) {
-      log(`Interview question timeout: ${text} - ${err?.message || 'no messages'}`);
-      await dm.send("⏱️ Timeout. Leaving blank. You can rerun /setup run later to refine.");
-      return "";
     }
-  }
-  for (let i = 0; i < questions.length; i++) {
-    const a = await ask(questions[i]);
-    answers.push(a);
-    
-    // After rules/FAQ question, ask for template preference if yes
-    if (i === 3 && a.toLowerCase().includes('yes')) {
-      const templateChoice = await ask({ 
-        text: "Which rule template style do you prefer?", 
-        suggestions: SUGGESTION_PACKS.ruleTemplates 
-      });
-      // Map template choice to template key
-      if (templateChoice.toLowerCase().includes('gaming')) selectedRuleTemplate = 'gaming';
-      else if (templateChoice.toLowerCase().includes('crypto') || templateChoice.toLowerCase().includes('defi')) selectedRuleTemplate = 'crypto';
-      else if (templateChoice.toLowerCase().includes('support')) selectedRuleTemplate = 'support';
-      else if (templateChoice.toLowerCase().includes('content')) selectedRuleTemplate = 'content';
-      else if (templateChoice.toLowerCase().includes('professional') || templateChoice.toLowerCase().includes('business')) selectedRuleTemplate = 'professional';
-      // Otherwise leave null for auto-detect
-    }
-  }
   }
 
-  await user.send("🧠 Generating blueprint with AI...");
+  await user.send("🧠 Generating your server blueprint…");
 
   let blueprint = null;
   let validation = { valid: false, errors: [] };
-  const MAX_TRIES = 3;
-  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
-    if (attempt > 1) {
-      await user.send(`🔁 Attempt ${attempt} fixing blueprint...`);
-    }
-    blueprint = await generateBlueprint(answers, user);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (attempt > 1) await user.send(`🔁 Fixing blueprint (attempt ${attempt})…`);
+    blueprint = await generateBlueprint(answers, guild);
     if (!blueprint) {
-      await user.send("⚠️ AI returned empty or invalid JSON. Retrying...");
+      await user.send("⚠️ AI returned invalid JSON. Retrying…");
       continue;
     }
     validation = validateBlueprint(blueprint);
     if (validation.valid) break;
 
-    const repairPrompt = buildRepairPrompt(validation.errors);
     const repairRaw = await askAI([
-      { role: "system", content: repairPrompt },
+      { role: "system", content: buildRepairPrompt(validation.errors) },
       { role: "user", content: JSON.stringify(blueprint) }
     ]);
     blueprint = selfHealJSON(repairRaw);
@@ -343,149 +236,104 @@ export async function runInterview(user, guild, client, preset = null, isPremium
 
   if (!validation.valid) {
     await user.send(
-      "❌ Could not produce a valid blueprint after several attempts. Errors: " +
-        formatValidationErrors(validation.errors)
+      "❌ Could not produce a valid blueprint.\n" + formatValidationErrors(validation.errors)
     );
     return false;
   }
 
-  // Enforce Free Tier Limit
+  applyBranding(blueprint, answers);
+  applyInterviewMeta(blueprint, guild, answers);
+  ensureVoiceAndAnnouncements(blueprint, answers);
+  applyExtras(blueprint, answers);
+
   const FREE_LIMIT = 20;
   if (!isPremium && blueprint.categories) {
     let count = 0;
     let truncated = false;
-    for (const catName in blueprint.categories) {
+    for (const catName of Object.keys(blueprint.categories)) {
       const channels = blueprint.categories[catName];
-      if (Array.isArray(channels)) {
-        if (count >= FREE_LIMIT) {
-          blueprint.categories[catName] = [];
-          truncated = true;
-        } else if (count + channels.length > FREE_LIMIT) {
-          const allowed = FREE_LIMIT - count;
-          blueprint.categories[catName] = channels.slice(0, allowed);
-          count += allowed;
-          truncated = true;
-        } else {
-          count += channels.length;
-        }
+      if (!Array.isArray(channels)) continue;
+      if (count >= FREE_LIMIT) {
+        blueprint.categories[catName] = [];
+        truncated = true;
+      } else if (count + channels.length > FREE_LIMIT) {
+        blueprint.categories[catName] = channels.slice(0, FREE_LIMIT - count);
+        count = FREE_LIMIT;
+        truncated = true;
+      } else {
+        count += channels.length;
       }
     }
     if (truncated) {
-      await user.send(`⚠️ **Free Tier Limit Reached**\nYour blueprint exceeded the ${FREE_LIMIT} channel limit. Some channels were removed. Upgrade to Premium for unlimited channels!`);
+      await user.send(
+        `⚠️ Free tier capped at ${FREE_LIMIT} channels. Upgrade for unlimited layouts.`
+      );
     }
   }
 
-  // Inject Premium Role if Subscriber
   if (isPremium && blueprint.roles) {
-    const hasPremiumRole = blueprint.roles.some(r => 
-      r.name.toLowerCase().includes('premium') || 
-      r.name.toLowerCase().includes('vip') || 
-      r.name.toLowerCase().includes('supporter')
+    const hasPremiumRole = blueprint.roles.some((r) =>
+      /premium|vip|supporter/i.test(r.name)
     );
-    
     if (!hasPremiumRole) {
       blueprint.roles.push({
         name: "Premium 💎",
         color: "#FFD700",
         permissions: ["ChangeNickname", "AttachFiles", "EmbedLinks", "UseExternalEmojis", "AddReactions"]
       });
-      await user.send("💎 **Premium Perk**: Added a 'Premium 💎' role to your blueprint!");
+      await user.send("💎 Added **Premium 💎** role to your blueprint.");
     }
   }
 
-  // Inject rules/about/FAQ if requested
-  const wantsInfo = answers[3]?.toLowerCase().includes('yes');
-  if (wantsInfo && blueprint.categories) {
-    const firstCat = Object.keys(blueprint.categories)[0];
-    if (firstCat) {
-      const existing = blueprint.categories[firstCat] || [];
-      let rulesChannel = existing.find(ch => ch.name?.toLowerCase().includes('rule'));
-      const hasAbout = existing.some(ch => ch.name?.toLowerCase().includes('about'));
-      const hasFaq = existing.some(ch => ch.name?.toLowerCase().includes('faq'));
-      
-      // Use selected template or auto-detect
-      const { RULE_TEMPLATES, FAQ_TEMPLATES } = await import('./ruleTemplates.js');
-      const ruleTemplate = selectedRuleTemplate ? RULE_TEMPLATES[selectedRuleTemplate] : inferRuleTemplate(answers[0]);
-      const faqTemplate = selectedRuleTemplate ? FAQ_TEMPLATES[selectedRuleTemplate] : inferFaqTemplate(answers[0]);
-      
-      let injectedRules = false;
-      if (!rulesChannel) {
-        rulesChannel = {
-          name: "rules",
-          type: "text",
-          permissionsPreset: "public-readonly",
-          pinMessage: true
-        };
-        existing.unshift(rulesChannel);
-      }
+  const wantsInfo = parseYes(answers[A.INFO_EMBEDS]);
+  if (wantsInfo) {
+    const { injectedRules, ruleTemplate, faqTemplate } = await injectInfoEmbeds(
+      blueprint,
+      guild,
+      answers,
+      selectedRuleTemplate
+    );
 
-      if (!rulesChannel.message) {
-        const rulesBody = ruleTemplate.rules.map((r, i) => `${i + 1}. ${r}`).join('\n') + 
-          '\n\n' + ruleTemplate.footer;
-        rulesChannel.message = {
-          title: ruleTemplate.title,
-          body: rulesBody
-        };
-        rulesChannel.pinMessage = true;
-        injectedRules = true;
-      }
-      if (!hasAbout) {
-        existing.push({ 
-          name: 'about', 
-          type: 'text',
-          message: { 
-            title: '🧩 About This Server', 
-            body: `Welcome to ${blueprint.name || guild.name}!\n\n${answers[0] || 'A community server.'}\n\nWe're building a vibrant community - join the conversation and have fun!` 
-          } 
-        });
-      }
-      if (!hasFaq) {
-        const faqBody = faqTemplate.map(qa => `**Q: ${qa.q}**\nA: ${qa.a}`).join('\n\n');
-        existing.push({ 
-          name: 'faq', 
-          type: 'text',
-          message: { 
-            title: '❓ Frequently Asked Questions', 
-            body: faqBody
-          } 
-        });
-      }
-      blueprint.categories[firstCat] = existing;
-      
-      // Preview rules/FAQ
-      await user.send('📋 **Generated Content Preview:**');
-      if (injectedRules) {
-        await user.send(`**${ruleTemplate.title}**\n${ruleTemplate.rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n\n${ruleTemplate.footer}`);
-      }
-      if (!hasFaq) {
-        await user.send(`**❓ FAQ Preview**\n${faqTemplate.map(qa => `Q: ${qa.q}\nA: ${qa.a}`).join('\n\n')}`);
-      }
-      
-      // Ask for edits
-      await user.send('\n✏️ Want to edit this content? Reply **edit** to customize, or **continue** to proceed.');
-      try {
-        const editChoice = await dm.awaitMessages({
-          filter: m => m.author.id === user.id,
-          max: 1,
-          time: 60000
-        });
-        const choice = editChoice.first()?.content?.toLowerCase() || 'continue';
-        if (choice.includes('edit')) {
-          await user.send('💡 To customize: export the blueprint after build, edit the JSON, then use `/setup import` to rebuild with your changes.');
-        }
-      } catch {}
-      
-      await user.send('✅ Content looks good! Proceeding with build...');
+    await user.send("📋 **Content preview** (posted automatically during build):");
+    if (injectedRules && ruleTemplate) {
+      await user.send(
+        `**${ruleTemplate.title}**\n${ruleTemplate.rules.map((r, i) => `${i + 1}. ${r}`).join("\n")}\n\n${ruleTemplate.footer}`
+      );
     }
+    if (faqTemplate) {
+      await user.send(
+        `**FAQ sample**\n${faqTemplate.slice(0, 2).map((qa) => `Q: ${qa.q}\nA: ${qa.a}`).join("\n\n")}…`
+      );
+    }
+    await user.send(
+      "Reply **continue** to build, or **edit** for tips on changing copy after build."
+    );
+    try {
+      const editChoice = await dm.awaitMessages({
+        filter: (m) => m.author.id === user.id,
+        max: 1,
+        time: 90000
+      });
+      const choice = editChoice.first()?.content?.toLowerCase() || "continue";
+      if (choice.includes("edit")) {
+        await user.send(
+          "💡 Embeds post during build. Tweak in-channel after, use `/setup edit-message` (Pro), or `/setup nuke` + `/setup run` to rebuild."
+        );
+      }
+    } catch {}
+  } else {
+    await user.send(
+      "ℹ️ You skipped auto-embeds. Channels will be created empty — run `/setup post-messages` later if you change your mind."
+    );
   }
 
-  await user.send("✨ Blueprint validated. Building your server now...");
+  await user.send("✨ Building your server now (channels → embeds → finish)…");
   try {
     await applyBlueprint(guild, blueprint, { ownerUser: user });
     return true;
   } catch (err) {
     log(`Build failed: ${err.message}`);
-    await user.send("❌ An error occurred while building the server. Check bot logs.");
+    await user.send(`❌ Build failed: ${err.message}`);
     return false;
   }
 }
