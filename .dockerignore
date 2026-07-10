@@ -1,0 +1,8 @@
+node_modules
+.env
+.env.*
+data/backups
+data/tickets
+logs
+.git
+*.log

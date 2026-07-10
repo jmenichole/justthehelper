@@ -309,12 +309,15 @@ export async function handleSetupInteraction(interaction, client) {
       return interaction.followUp({ ephemeral: true, content: `❌ Backup failed (${err.message}). Nuke aborted for safety.` });
     }
 
-    await interaction.followUp({ ephemeral: true, content: "☢️ **NUKING CHANNELS**..." });
+    await interaction.followUp({ ephemeral: true, content: "☢️ **NUKING CHANNELS**..." }).catch(() => {});
     await wipeServer(interaction.guild);
-    await interaction.followUp({
-      ephemeral: true,
-      content: "💀 Nuke complete. Run `/setup run preset:justthebuilder` to rebuild your support layout."
-    });
+    try {
+      await interaction.user.send(
+        "💀 **Nuke complete.** Run `/setup run preset:justthebuilder` to rebuild your support layout."
+      );
+    } catch (err) {
+      log(`Nuke done but DM failed: ${err.message}`);
+    }
   } else if (sub === "post-messages") {
     const filePath = path.resolve("data", "blueprints", `${interaction.guild.id}.json`);
     const cfg = loadGuildConfig(interaction.guild.id);

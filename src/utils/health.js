@@ -35,6 +35,6 @@ export function startHealthServer(client, port = Number(process.env.PORT) || 300
   });
 
   server.on("error", (err) => log(`Health server error: ${err.message}`));
-  server.listen(port, () => log(`Health server running on :${port} — GET /health`));
+  server.listen(port, "0.0.0.0", () => log(`Health server running on :${port} — GET /health`));
   return server;
 }
