@@ -12,7 +12,7 @@ import { sendProgress } from "../progress.js";
  * @param {Object} [branding] Branding object (may override emoji prefix)
  * @returns {string} Formatted channel name
  */
-function formatChannelName(rawName, style, branding) {
+export function formatChannelName(rawName, style, branding) {
   if (!rawName) return rawName;
   const base = rawName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const emojiPrefix = branding?.emoji || style?.emojiPrefix || "";
@@ -50,8 +50,16 @@ function resolveChannelType(def) {
  * @param {Object} blueprint
  * @param {Object} roleMap
  * @param {import('discord.js').User} [progressUser]
+ * @param {Object} [options]
+ * @param {boolean} [options.includeTopics=true] Set channel topics from blueprint
+ * @param {boolean} [options.includeWebhooks=true] Create webhooks from blueprint
+ * @param {boolean} [options.skipPermissions=false] Skip permission overwrites/category presets/thread locks (free structure mode)
  */
-export async function createChannels(guild, blueprint, roleMap, progressUser) {
+export async function createChannels(guild, blueprint, roleMap, progressUser, options = {}) {
+  const includeTopics = options.includeTopics !== false;
+  const includeWebhooks = options.includeWebhooks !== false;
+  const skipPermissions = options.skipPermissions === true;
+
   const { categories, style, branding } = blueprint;
   const channelMap = {};
   const categoryPrivacy = blueprint.categoryPrivacy || {};
@@ -67,7 +75,7 @@ export async function createChannels(guild, blueprint, roleMap, progressUser) {
 
       // Category privacy preset (inherits to channels unless overridden)
       const catPreset = categoryPrivacy[categoryName];
-      if (catPreset) {
+      if (catPreset && !skipPermissions) {
         try { await applyCategoryPreset(category, catPreset, roleMap); } catch (err) { log(`Category preset failed (${categoryName}): ${err.message}`); }
       }
 
@@ -79,17 +87,19 @@ export async function createChannels(guild, blueprint, roleMap, progressUser) {
             name: channelName,
             type: resolveChannelType(chDef),
             parent: category.id,
-            topic: chDef.topic || undefined
+            topic: includeTopics ? (chDef.topic || undefined) : undefined
           };
           if (createOpts.type === ChannelType.GuildForum && chDef.defaultAutoArchiveDuration) {
             createOpts.defaultAutoArchiveDuration = chDef.defaultAutoArchiveDuration;
           }
           const channel = await guild.channels.create(createOpts);
           channelMap[channelMapKey(categoryName, originalName)] = channel.id;
-          await applyChannelPermissions(channel, chDef, roleMap);
+          if (!skipPermissions) {
+            await applyChannelPermissions(channel, chDef, roleMap);
+          }
 
           // Thread lock - remove thread creation for everyone
-          if (chDef.threadsLocked) {
+          if (chDef.threadsLocked && !skipPermissions) {
             const everyoneId = guild.roles.everyone.id;
             await channel.permissionOverwrites.edit(everyoneId, {
               CreatePublicThreads: false,
@@ -107,7 +117,7 @@ export async function createChannels(guild, blueprint, roleMap, progressUser) {
           }
 
           // Webhooks
-          if (blueprint.webhooks && blueprint.webhooks[originalName]) {
+          if (includeWebhooks && blueprint.webhooks && blueprint.webhooks[originalName]) {
             const whDef = blueprint.webhooks[originalName];
             try {
               await channel.createWebhook({ name: whDef.name || originalName, avatar: whDef.avatar || undefined });
@@ -135,6 +145,54 @@ export async function createChannels(guild, blueprint, roleMap, progressUser) {
   }
 
   return { channelMap };
+}
+
+/**
+ * Map blueprint-defined channels to already-existing guild channels by formatted name.
+ * Used by polish mode to avoid recreating channels built during the free structure pass.
+ * @param {import('discord.js').Guild} guild
+ * @param {Object} blueprint
+ * @returns {Promise<Object>} Map of channelMapKey -> channel id
+ */
+export async function mapExistingChannelsFromBlueprint(guild, blueprint) {
+  const channelMap = {};
+  for (const [categoryName, list] of Object.entries(blueprint.categories || {})) {
+    for (const chDef of list) {
+      const originalName = typeof chDef === "string" ? chDef : chDef.name;
+      const formatted = formatChannelName(originalName, blueprint.style, blueprint.branding);
+      const found = guild.channels.cache.find(
+        (c) => c.name === formatted || c.name === originalName?.toLowerCase?.()
+      );
+      if (found) channelMap[channelMapKey(categoryName, originalName)] = found.id;
+    }
+  }
+  return channelMap;
+}
+
+/**
+ * Apply topics & permission overwrites to existing channels (polish pass on top of free structure).
+ * @param {import('discord.js').Guild} guild
+ * @param {Object} blueprint
+ * @param {Object} channelMap Map of channelMapKey -> channel id (from mapExistingChannelsFromBlueprint)
+ * @param {Object} roleMap
+ * @param {import('discord.js').User} [progressUser]
+ */
+export async function applyTopicsAndPermissions(guild, blueprint, channelMap, roleMap, progressUser) {
+  for (const [categoryName, list] of Object.entries(blueprint.categories || {})) {
+    for (const chDef of list) {
+      if (typeof chDef === "string") continue;
+      const originalName = chDef.name || chDef;
+      const id = channelMap[channelMapKey(categoryName, originalName)];
+      if (!id) continue;
+      const channel = await guild.channels.fetch(id).catch(() => null);
+      if (!channel) continue;
+      if (chDef.topic && typeof channel.setTopic === "function") {
+        await channel.setTopic(chDef.topic).catch(() => {});
+      }
+      await applyChannelPermissions(channel, chDef, roleMap).catch(() => {});
+      if (progressUser) await sendProgress(progressUser, `✨ Polished #${channel.name}`);
+    }
+  }
 }
 
 /**
