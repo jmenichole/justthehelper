@@ -25,7 +25,6 @@ export function startHealthServer(client, port = Number(process.env.PORT) || 300
         status: "ok",
         uptime: Math.floor(process.uptime()),
         guilds: _client?.guilds?.cache?.size ?? 0,
-        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
         env: process.env.NODE_ENV || "development"
       }));
     } else {

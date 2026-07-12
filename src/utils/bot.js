@@ -47,10 +47,18 @@ client.once("clientReady", async () => {
   const { startHealthServer } = await import("./health.js");
   startHealthServer(client);
 
+  const { startReminderScanner } = await import("./reminders/scanner.js");
+  startReminderScanner(client);
+
   try {
+    const { WelcomeCommandData } = await import("./commands/welcome.js");
+    const { TicketsCommandData } = await import("./commands/tickets.js");
+    const { RemindCommandData } = await import("./commands/remind.js");
     const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-    await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
-    log("Registered slash commands (none yet)");
+    await rest.put(Routes.applicationCommands(client.user.id), {
+      body: [WelcomeCommandData, TicketsCommandData, RemindCommandData],
+    });
+    log("Registered /welcome /tickets /remind");
   } catch (err) {
     log(`Command registration failed: ${err.message}`);
   }
@@ -64,6 +72,14 @@ client.on("guildDelete", (guild) => {
 
 client.on("interactionCreate", async (i) => {
   try {
+    const { handleWelcomeCommand } = await import("./commands/welcome.js");
+    if (await handleWelcomeCommand(i, client)) return;
+    const { handleTicketsCommand } = await import("./commands/tickets.js");
+    if (await handleTicketsCommand(i, client)) return;
+    const { handleRemindCommand } = await import("./commands/remind.js");
+    if (await handleRemindCommand(i)) return;
+    const { handleVerifyButton } = await import("./welcome/handler.js");
+    if (await handleVerifyButton(i, client)) return;
     const { handleTicketInteraction } = await import("./tickets/handler.js");
     if (await handleTicketInteraction(i, client)) return;
   } catch (err) {
@@ -102,7 +118,11 @@ client.on("entitlementCreate", async (entitlement) => {
   log(`New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}`);
   try {
     const { postPurchase } = await import("./ops.js");
-    postPurchase({ userId: entitlement.userId, skuId: entitlement.skuId, skuLabel: String(entitlement.skuId) });
+    const helperSkus = [process.env.HELPER_SKU_ID, process.env.SUBSCRIPTION_SKU_ID].filter(Boolean);
+    const skuLabel = helperSkus.includes(entitlement.skuId)
+      ? "JustTheHelper $1.99/mo"
+      : String(entitlement.skuId);
+    postPurchase({ userId: entitlement.userId, skuId: entitlement.skuId, skuLabel });
   } catch {}
 });
 

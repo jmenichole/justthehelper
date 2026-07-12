@@ -18,7 +18,7 @@ let _config = null;
 
 function opsFromEnv() {
   return {
-    botId: process.env.ALERTS_BOT_ID || "justthebuilder",
+    botId: process.env.ALERTS_BOT_ID || "justthehelper",
     guildId: (process.env.OPS_GUILD_ID || "").trim(),
     errorChannelId: (process.env.OPS_ERROR_CHANNEL_ID || "").trim(),
     analyticsChannelId: (process.env.OPS_ANALYTICS_CHANNEL_ID || "").trim(),
@@ -49,7 +49,7 @@ function truncate(text, max = 500) {
 }
 
 function botId() {
-  return _config?.botId || "justthebuilder";
+  return _config?.botId || "justthehelper";
 }
 
 async function sendToChannel(channelId, payload) {
