@@ -2,7 +2,7 @@
 import { SlashCommandBuilder, REST, Routes } from "discord.js";
 import { asOwnerUserCommand } from "./commands/ownerCommands.js";
 import { log } from "./logger.js";
-import { grantFreeBuildToGuild, getEarlyAdopterStatus } from "./earlyAdopters.js";
+import { grantManualPolishGrant } from "./grandfather.js";
 
 const grantCommandBuilder = new SlashCommandBuilder()
   .setName("grant")
@@ -136,17 +136,14 @@ export async function handleGrantInteraction(interaction, client) {
 
     await interaction.deferReply({ ephemeral: true });
 
-    grantFreeBuildToGuild(guildId);
-    const status = getEarlyAdopterStatus(guildId);
+    grantManualPolishGrant(guildId);
     const guild = await client.guilds.fetch(guildId).catch(() => null);
 
     if (!guild) {
       return interaction.editReply({
         content: [
           `✅ **Free build granted** for server \`${guildId}\`.`,
-          status.hasFreeBuildLeft
-            ? "Owner can run `/setup run` once after the bot is invited."
-            : "Ready for `/setup run` once the bot is in the server.",
+          "Owner can run `/setup run` once after the bot is invited.",
           notify
             ? "\n⚠️ Could not notify — bot is not in that server (no owner DM)."
             : ""
@@ -182,9 +179,7 @@ export async function handleGrantInteraction(interaction, client) {
     return interaction.editReply({
       content: [
         `✅ **Free build granted** for **${guild.name}** (\`${guildId}\`).`,
-        status.hasFreeBuildLeft
-          ? "They can run `/setup run` once (owner only)."
-          : "Ready for `/setup run`.",
+        "They can run `/setup run` once (owner only).",
         notifyResult
       ].join("\n")
     });
@@ -201,14 +196,10 @@ export async function handleGrantInteraction(interaction, client) {
         try {
           await user.send(
             [
-              "💎 **You've been granted Pro Builder** on **JustTheBuilder**.",
+              "🧪 **Legacy test entitlement added** on **JustTheBuilder**.",
               "",
-              "Unlocked for you:",
-              "• Unlimited `/setup run` builds",
-              "• Fast-track presets (`gaming`, `crypto`, etc.)",
-              "• `/setup edit-message` on servers you build",
-              "",
-              "Run `/setup run` in any server **you own** to start.",
+              "This is a developer/QA subscription flag for testing — not a live product tier.",
+              "If you're helping test builds, run `/setup run` in a server you own.",
               "",
               `Support: ${supportLink()}`
             ].join("\n")
@@ -221,7 +212,7 @@ export async function handleGrantInteraction(interaction, client) {
 
       return interaction.editReply({
         content: [
-          `✅ **Pro granted** to **${user.tag}** (\`${user.id}\`).`,
+          `✅ **Legacy test entitlement granted** to **${user.tag}** (\`${user.id}\`).`,
           ent?.id ? `Entitlement: \`${ent.id}\`` : "",
           "_They may need to restart Discord for entitlements to refresh._",
           notifyResult
@@ -242,11 +233,30 @@ export async function handleGrantInteraction(interaction, client) {
     await interaction.deferReply({ ephemeral: true });
     try {
       const removed = await revokeProTestEntitlements(client, user.id);
+      let notifyResult = "";
+      if (removed > 0) {
+        try {
+          await user.send(
+            [
+              "🧪 **Legacy test entitlement removed** on **JustTheBuilder**.",
+              "",
+              "Your developer/QA subscription test flag was revoked — no product access changed.",
+              "",
+              `Support: ${supportLink()}`
+            ].join("\n")
+          );
+          notifyResult = "\n📬 User notified by DM.";
+        } catch (err) {
+          notifyResult = `\n⚠️ Could not DM user: ${err.message}`;
+        }
+      }
+
       return interaction.editReply({
         content:
-          removed > 0
-            ? `✅ Removed **${removed}** Pro entitlement(s) from **${user.tag}**.`
-            : `ℹ️ No active Pro entitlements found for **${user.tag}**.`
+          (removed > 0
+            ? `✅ Removed **${removed}** legacy test entitlement(s) from **${user.tag}**.`
+            : `ℹ️ No active legacy test entitlements found for **${user.tag}**.`) +
+          notifyResult
       });
     } catch (err) {
       log(`revoke pro failed: ${err.message}`);

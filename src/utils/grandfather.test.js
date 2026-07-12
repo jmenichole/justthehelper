@@ -6,6 +6,9 @@ import {
   GRANDFATHER_CUTOFF_MS,
   isGrandfatherEligibleByJoin,
   hasGrandfatherFullLeft,
+  grantManualPolishGrant,
+  hasManualPolishGrant,
+  clearManualPolishGrant,
 } from "./grandfather.js";
 import { saveGuildConfig } from "./storage/guildConfig.js";
 
@@ -61,5 +64,19 @@ describe("hasGrandfatherFullLeft", () => {
     trackGuild(guild.id);
     saveGuildConfig(guild.id, { grandfatherFullBuildUsed: true });
     assert.equal(hasGrandfatherFullLeft(guild), false);
+  });
+});
+
+describe("manualPolishGrant", () => {
+  it("grants and clears manual polish flag", () => {
+    const guildId = "manual-1";
+    trackGuild(guildId);
+    saveGuildConfig(guildId, { grandfatherFullBuildUsed: true, earlyAdopterFreeBuildUsed: true });
+    grantManualPolishGrant(guildId);
+    assert.equal(hasManualPolishGrant(guildId), true);
+    const guild = { id: guildId, joinedTimestamp: GRANDFATHER_CUTOFF_MS + 1000 };
+    assert.equal(hasGrandfatherFullLeft(guild), false);
+    clearManualPolishGrant(guildId);
+    assert.equal(hasManualPolishGrant(guildId), false);
   });
 });

@@ -29,3 +29,25 @@ export function markGrandfatherFullUsed(guildId) {
     earlyAdopterFreeBuildUsed: true,
   });
 }
+
+/** Owner `/grant free-build` — one manual full/polish apply, any join date. */
+export function hasManualPolishGrant(guildId) {
+  const cfg = loadGuildConfig(guildId);
+  return cfg.manualPolishGrant === true;
+}
+
+export function grantManualPolishGrant(guildId) {
+  const cfg = loadGuildConfig(guildId);
+  saveGuildConfig(guildId, {
+    ...cfg,
+    manualPolishGrant: true,
+    grandfatherFullBuildUsed: false,
+    earlyAdopterFreeBuildUsed: false,
+  });
+}
+
+export function clearManualPolishGrant(guildId) {
+  const cfg = loadGuildConfig(guildId);
+  const { manualPolishGrant: _removed, ...rest } = cfg;
+  saveGuildConfig(guildId, rest);
+}

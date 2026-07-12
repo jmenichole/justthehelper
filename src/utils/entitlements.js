@@ -61,15 +61,21 @@ export function findUnconsumedBasicPack(entitlements) {
 }
 
 /**
- * @returns {{ allowed: boolean, reason: 'owner'|'pack'|'grandfather'|'denied' }}
+ * @returns {{ allowed: boolean, reason: 'owner'|'pack'|'manual_grant'|'grandfather'|'denied' }}
  */
 export function canApplyPolish(interaction, guild) {
   if (isBotOwner(interaction.user.id)) return { allowed: true, reason: "owner" };
   if (findUnconsumedBasicPack(interaction.entitlements)) {
     return { allowed: true, reason: "pack" };
   }
-  if (guild && hasGrandfatherFullLeft(guild)) {
-    return { allowed: true, reason: "grandfather" };
+  if (guild) {
+    const cfg = loadGuildConfig(guild.id);
+    if (cfg.manualPolishGrant === true) {
+      return { allowed: true, reason: "manual_grant" };
+    }
+    if (hasGrandfatherFullLeft(guild)) {
+      return { allowed: true, reason: "grandfather" };
+    }
   }
   return { allowed: false, reason: "denied" };
 }

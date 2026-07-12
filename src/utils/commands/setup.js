@@ -4,7 +4,7 @@ import { applyBlueprint, loadPersistedBlueprint } from "../applyBlueprint.js";
 import { postMessagesToExistingChannels } from "../builder/messages.js";
 import { loadGuildConfig } from "../storage/guildConfig.js";
 import { canApplyPolish, findUnconsumedBasicPack, guildHasPolishApplied, isBotOwner } from "../entitlements.js";
-import { markGrandfatherFullUsed } from "../grandfather.js";
+import { clearManualPolishGrant, markGrandfatherFullUsed } from "../grandfather.js";
 import { postAnalytics } from "../ops.js";
 import fs from 'fs';
 import path from 'path';
@@ -249,6 +249,14 @@ export async function applyPolishForInteraction(interaction, guild, ownerUser) {
     postAnalytics({
       event: "grandfather_used",
       title: "Grandfather full setup used",
+      fields: [{ name: "Guild", value: `\`${guild.id}\``, inline: true }]
+    });
+  }
+  if (access.reason === "manual_grant") {
+    clearManualPolishGrant(guild.id);
+    postAnalytics({
+      event: "manual_polish_grant_used",
+      title: "Manual polish grant used",
       fields: [{ name: "Guild", value: `\`${guild.id}\``, inline: true }]
     });
   }
