@@ -21,3 +21,8 @@ node_modules/
 
 # Local tunnel config (contains auth tokens)
 ngrok.yml
+
+# Git worktrees
+.worktrees/
+worktrees/
+

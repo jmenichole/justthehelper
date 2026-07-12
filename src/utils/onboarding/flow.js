@@ -1,6 +1,9 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
 import { buildPreviewBlueprint } from './preview.js';
-import { applyBlueprint } from '../applyBlueprint.js';
+import { applyBlueprint, persistBlueprintOnly } from '../applyBlueprint.js';
+import { sendFreemiumPaywall } from '../commands/setup.js';
+import { canApplyPolish, guildHasPolishApplied, isBotOwner } from '../entitlements.js';
+import { loadGuildConfig } from '../storage/guildConfig.js';
 import { sendProgress } from '../progress.js';
 import { log } from '../logger.js';
 import fs from 'fs';
@@ -151,11 +154,11 @@ export async function handleOnboardingComponent(interaction, client) {
 
   if (interaction.customId === 'jtb_build') {
     const blueprint = buildBlueprintFromAnswers(state.answers);
-    await interaction.reply({ ephemeral: true, content: 'Building…' });
+    await interaction.reply({ ephemeral: true, content: 'Saving your blueprint…' });
     try {
       const guild = client.guilds.cache.get(state.guildId);
-      await applyBlueprint(guild, blueprint, { ownerUser: user });
-      await postCompletionButtons(user, blueprint);
+      persistBlueprintOnly(guild.id, blueprint);
+      await sendFreemiumPaywall(user, guild);
       sessions.delete(userId);
     } catch (err) { log(`Onboarding build failed: ${err.message}`); }
     return; }
@@ -194,7 +197,24 @@ export async function handlePostBuildButtons(interaction, client) {
     try {
       const latest = JSON.parse(fs.readFileSync(path.resolve('data', 'blueprints', 'latest-preview.json'), 'utf-8'));
       const guild = client.guilds.cache.find(g => g.members.cache.has(user.id));
-      if (guild) await applyBlueprint(guild, latest, { ownerUser: user });
+      if (!guild) {
+        await interaction.followUp({ ephemeral: true, content: 'Could not find a server you belong to.' });
+        return;
+      }
+      const access = canApplyPolish(interaction, guild);
+      const polished = guildHasPolishApplied(guild.id);
+      if (access.allowed || polished || isBotOwner(interaction.user.id)) {
+        const cfg = loadGuildConfig(guild.id);
+        const mode = cfg.structureAppliedAt ? 'polish' : 'full';
+        await applyBlueprint(guild, latest, { ownerUser: user, mode });
+        await interaction.followUp({ ephemeral: true, content: '✅ Blueprint reapplied with full polish.' });
+      } else {
+        await applyBlueprint(guild, latest, { ownerUser: user, mode: 'structure' });
+        await interaction.followUp({
+          ephemeral: true,
+          content: '✅ Applied free structure only. Buy the Basic Build Pack ($0.99) and run `/setup unlock` for roles, embeds, and tickets.'
+        });
+      }
     } catch (err) { log(`Reapply failed: ${err.message}`); }
   } else if (id === 'jtb_brand') {
     await interaction.reply({ ephemeral: true, content: 'Branding enhancements coming soon.' });

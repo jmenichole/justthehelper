@@ -17,23 +17,22 @@ Paste into **Developer Portal → your app → Profile → Expanded Description*
 **How it works**
 1. Invite the bot to a server you **own** (use **Add to Server**, not “Add to My Apps”)
 2. Run **`/setup run`**
-3. Answer a short interview (or pick a fast-track preset on Pro)
+3. Answer a short AI interview in DMs
 4. Watch progress in DMs while the bot builds your server
 
 **What you get**
+- **Free:** AI interview + channel categories & names
+- **$0.99 unlock:** Full customization — roles, permissions, rules/FAQ embeds, pins, tickets
 - Custom **channel & role** structure for your niche (gaming, crypto, creator, support, and more)
 - **Permission presets** — public info channels, staff-only areas, announcement locks
 - **Auto-written embeds** — rules (pinned), welcome, FAQ, ticket panel
-- **Built-in ticket system** — anyone can open tickets; staff roles get pinged (Pro / full builds)
-- **Rebuild tools** — repost embeds, redeploy ticket panel, safe nuke with backup
+- **Built-in ticket system** — anyone can open tickets; staff roles get pinged
 
 **Pricing** (Discord Shop)
 | Plan | Price | Includes |
 |------|--------|----------|
-| **Basic Build Pack** | $3.99 one-time | 1 full AI build, embeds included |
-| **Pro Builder** | $6.99/mo | Unlimited builds, all presets, tickets, embed edits |
-
-Early installs may include a **loyalty free build** — run `/setup run` once as server owner to claim.
+| **Free** | $0 | AI interview + channel categories & names |
+| **Basic Build Pack** | $0.99 one-time | Full customization: roles, permissions, rules/FAQ embeds, pins, tickets |
 
 **Support:** https://discord.gg/NEePze3rZd
 
@@ -49,10 +48,10 @@ Early installs may include a **loyalty free build** — run `/setup run` once as
 
 1. Invita el bot con **Añadir al servidor** (servidor que administres)
 2. Usa **`/setup run`**
-3. Responde la entrevista breve (o un preset en Pro)
+3. Responde la entrevista breve con IA
 4. El bot construye el servidor y te avisa por MD
 
-**Planes:** Pack básico **$3.99** (1 build) · Pro **$6.99/mes** (builds ilimitados, presets, tickets).
+**Planes:** Gratis (entrevista IA + categorías y nombres de canales) · Pack básico **$0.99** (personalización completa: roles, permisos, embeds, pins, tickets).
 
 **Soporte:** https://discord.gg/NEePze3rZd
 
@@ -66,10 +65,10 @@ Early installs may include a **loyalty free build** — run `/setup run` once as
 
 1. Invitez le bot via **Ajouter au serveur** (serveur dont vous êtes propriétaire)
 2. Lancez **`/setup run`**
-3. Répondez à l’interview (ou un preset en Pro)
+3. Répondez à l’interview IA
 4. Le bot construit le serveur et vous informe en MP
 
-**Tarifs :** Pack Basic **3,99 $** (1 build) · Pro **6,99 $/mois** (builds illimités, presets, tickets).
+**Tarifs :** Gratuit (interview IA + catégories et noms de salons) · Pack Basic **0,99 $** (personnalisation complète : rôles, permissions, embeds, épingles, tickets).
 
 **Support :** https://discord.gg/NEePze3rZd
 
@@ -83,12 +82,12 @@ Early installs may include a **loyalty free build** — run `/setup run` once as
 
 1. Bot mit **Zum Server hinzufügen** einladen (Server, den du besitzt)
 2. **`/setup run`** ausführen
-3. Kurzes Interview (oder Preset mit Pro)
+3. Kurzes KI-Interview
 4. Der Bot baut den Server und meldet sich per DM
 
-**Preise:** Basic **3,99 $** (1 Build) · Pro **6,99 $/Monat** (unbegrenzte Builds, Presets, Tickets).
+**Preise:** Kostenlos (KI-Interview + Kategorien & Kanalnamen) · Basic **0,99 $** (volle Anpassung: Rollen, Berechtigungen, Embeds, Pins, Tickets).
 
-**Support:** https://discord.gg/NEePze3rZd
+**Support :** https://discord.gg/NEePze3rZd
 
 ---
 
@@ -100,10 +99,10 @@ Early installs may include a **loyalty free build** — run `/setup run` once as
 
 1. Convide o bot com **Adicionar ao servidor** (servidor que você possui)
 2. Use **`/setup run`**
-3. Responda à entrevista (ou um preset no Pro)
+3. Responda à entrevista com IA
 4. O bot constrói o servidor e avisa na DM
 
-**Planos:** Basic **US$ 3,99** (1 build) · Pro **US$ 6,99/mês** (builds ilimitados, presets, tickets).
+**Planos:** Grátis (entrevista IA + categorias e nomes de canais) · Basic **US$ 0,99** (personalização completa: cargos, permissões, embeds, pins, tickets).
 
 **Suporte:** https://discord.gg/NEePze3rZd
 
@@ -111,4 +110,4 @@ Early installs may include a **loyalty free build** — run `/setup run` once as
 
 ## Short description (separate field, if needed)
 
-AI builds your Discord server—channels, roles, rules & FAQ embeds in one `/setup run`. Add to **Server** (User Install not required). Basic $3.99 · Pro $6.99/mo.
+AI builds your Discord server—free interview + channel layout; $0.99 unlocks roles, permissions, rules/FAQ embeds, pins & tickets. Add to **Server** (User Install not required).

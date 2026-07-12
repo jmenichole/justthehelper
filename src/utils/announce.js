@@ -54,14 +54,13 @@ function buildIntroEmbed(customMessage) {
         "✅ AI-generated channels, roles & permissions",
         "✅ Auto-written rules, FAQ & welcome embeds",
         "✅ Built-in support tickets (categories + staff pings)",
-        "✅ Fast-track presets on Pro",
         "",
         "🎁 **Early install gift:** This server still has **one free full AI setup**. Run `/setup run` (server owner).",
         "",
         customMessage ? `📢 ${customMessage}\n` : "",
         `💬 **Questions?** ${invite}`,
         "",
-        "_Basic Build Pack $3.99 · Pro Builder $6.99/mo — see the bot profile._"
+        "_Basic Build Pack $0.99 — see the bot profile._"
       ]
         .filter((line) => line !== undefined)
         .join("\n")

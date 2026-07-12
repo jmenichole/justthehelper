@@ -1,9 +1,11 @@
 import { runInterview } from "../ai/interviewFlow.js";
 import { log } from "../logger.js";
-import { applyBlueprint } from "../applyBlueprint.js";
+import { applyBlueprint, loadPersistedBlueprint } from "../applyBlueprint.js";
 import { postMessagesToExistingChannels } from "../builder/messages.js";
-import { loadGuildConfig, saveGuildConfig } from "../storage/guildConfig.js";
-import { getEarlyAdopterStatus } from "../earlyAdopters.js";
+import { loadGuildConfig } from "../storage/guildConfig.js";
+import { canApplyPolish, findUnconsumedBasicPack, guildHasPolishApplied, isBotOwner } from "../entitlements.js";
+import { clearManualPolishGrant, markGrandfatherFullUsed } from "../grandfather.js";
+import { postAnalytics } from "../ops.js";
 import fs from 'fs';
 import path from 'path';
 import {
@@ -12,8 +14,13 @@ import {
   ButtonStyle,
   ChannelType,
   ComponentType,
+  EmbedBuilder,
   PermissionFlagsBits
 } from "discord.js";
+
+// Optional userId -> guildId cache for freemium paywall DMs; guildId is also embedded
+// in button customIds so clicks survive bot restarts.
+const pendingPaywallGuild = new Map();
 
 // In-memory cooldown stores
 const serverCooldowns = new Map(); // guildId -> timestamp
@@ -38,7 +45,7 @@ export const SetupCommandData = {
         {
           type: 3,
           name: "preset",
-          description: "⚡ Fast-track with a preset (Premium)",
+          description: "⚡ Fast-track answers (free interview)",
           required: false,
           choices: [
             { name: "🎮 Gaming Community", value: "gaming" },
@@ -52,6 +59,11 @@ export const SetupCommandData = {
       ]
     },
     { type: 1, name: "nuke", description: "☢️ Backup to DM, then delete ALL channels (DANGEROUS)" },
+    {
+      type: 1,
+      name: "unlock",
+      description: "Apply paid polish (roles, embeds, pins, tickets) from your saved interview"
+    },
     {
       type: 1,
       name: "post-messages",
@@ -76,7 +88,7 @@ export const SetupCommandData = {
     {
       type: 1,
       name: "edit-message",
-      description: "💎 Edit a bot message/embed (Premium)",
+      description: "Edit a bot message/embed (requires unlock)",
       options: [
         { type: 7, name: 'channel', description: 'Channel containing the message', required: true },
         { type: 3, name: 'message_id', description: 'ID of the message to edit', required: true },
@@ -146,6 +158,188 @@ async function wipeServer(guild) {
 }
 
 /**
+ * DM the freemium paywall summary + Apply free structure / Unlock full ($0.99) buttons
+ * after an interview (or onboarding preview) completes. Guild id is embedded in each
+ * button customId so DM clicks work after a bot restart.
+ * @param {import('discord.js').User} user
+ * @param {import('discord.js').Guild} guild
+ */
+export async function sendFreemiumPaywall(user, guild) {
+  pendingPaywallGuild.set(user.id, guild.id);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x57f287)
+    .setTitle("Interview complete — choose how to build")
+    .setDescription(
+      [
+        "✅ **Free now:** categories + channel names (empty channels)",
+        "🔒 **$0.99 unlock:** roles, permissions, topics, embeds, pins, tickets",
+        "",
+        "Your answers are saved. Unlock later with `/setup unlock` after buying the Basic Build Pack."
+      ].join("\n")
+    );
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`jtb_apply_structure:${guild.id}`)
+      .setLabel("Apply free structure")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`jtb_unlock_polish:${guild.id}`)
+      .setLabel("Unlock full setup — $0.99")
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  try {
+    await user.send({ embeds: [embed], components: [row] });
+  } catch (err) {
+    log(`sendFreemiumPaywall DM failed: ${err.message}`);
+  }
+}
+
+/**
+ * Apply the free channel/category structure from the guild's saved interview blueprint.
+ * @param {import('discord.js').Guild} guild
+ * @param {import('discord.js').User} ownerUser
+ */
+export async function applyStructureForGuild(guild, ownerUser) {
+  const blueprint = loadPersistedBlueprint(guild.id);
+  if (!blueprint) throw new Error("No saved interview blueprint. Run /setup run first.");
+  return applyBlueprint(guild, blueprint, { ownerUser, mode: "structure" });
+}
+
+/**
+ * Apply paid polish/full build from the guild's saved interview blueprint, gated by entitlement.
+ * Handles its own denial reply/followUp on the interaction when access is not allowed.
+ * @param {import('discord.js').Interaction} interaction
+ * @param {import('discord.js').Guild} guild
+ * @param {import('discord.js').User} ownerUser
+ * @returns {Promise<boolean>} true if polish/full was applied
+ */
+export async function applyPolishForInteraction(interaction, guild, ownerUser) {
+  const access = canApplyPolish(interaction, guild);
+  if (!access.allowed) {
+    const content = [
+      "🔒 **Full setup needs the Basic Build Pack ($0.99).**",
+      "Buy it from my bot profile, then press Unlock again or run `/setup unlock`.",
+      "Your interview answers are saved — no re-interview needed."
+    ].join("\n");
+    if (interaction.replied || interaction.deferred) await interaction.followUp({ ephemeral: true, content });
+    else await interaction.reply({ ephemeral: true, content });
+    return false;
+  }
+
+  const blueprint = loadPersistedBlueprint(guild.id);
+  if (!blueprint) throw new Error("No saved interview blueprint.");
+
+  const cfg = loadGuildConfig(guild.id);
+  const mode = cfg.structureAppliedAt ? "polish" : "full";
+  await applyBlueprint(guild, blueprint, { ownerUser, mode });
+
+  if (access.reason === "pack") {
+    const ent = findUnconsumedBasicPack(interaction.entitlements);
+    if (ent) await interaction.client.application.consumeEntitlement(ent.id);
+    postAnalytics({
+      event: "pack_consumed",
+      title: "Basic pack consumed",
+      fields: [{ name: "Guild", value: `\`${guild.id}\``, inline: true }]
+    });
+  }
+  if (access.reason === "grandfather") {
+    markGrandfatherFullUsed(guild.id);
+    postAnalytics({
+      event: "grandfather_used",
+      title: "Grandfather full setup used",
+      fields: [{ name: "Guild", value: `\`${guild.id}\``, inline: true }]
+    });
+  }
+  if (access.reason === "manual_grant") {
+    clearManualPolishGrant(guild.id);
+    postAnalytics({
+      event: "manual_polish_grant_used",
+      title: "Manual polish grant used",
+      fields: [{ name: "Guild", value: `\`${guild.id}\``, inline: true }]
+    });
+  }
+
+  return true;
+}
+
+/**
+ * Handle the jtb_apply_structure / jtb_unlock_polish DM buttons sent by sendFreemiumPaywall.
+ * Guild id is parsed from the button customId (`action:guildId`); falls back to the
+ * in-memory cache for legacy buttons without an embedded id.
+ * @param {import('discord.js').Interaction} interaction
+ * @param {import('discord.js').Client} client
+ * @returns {Promise<boolean>} true if this interaction was handled
+ */
+export async function handleFreemiumButtons(interaction, client) {
+  if (!interaction.isButton()) return false;
+
+  const id = interaction.customId;
+  let action = null;
+  let guildId = null;
+
+  if (id.startsWith("jtb_apply_structure:")) {
+    action = "structure";
+    guildId = id.split(":")[1];
+  } else if (id.startsWith("jtb_unlock_polish:")) {
+    action = "polish";
+    guildId = id.split(":")[1];
+  } else if (id === "jtb_apply_structure" || id === "jtb_unlock_polish") {
+    action = id === "jtb_apply_structure" ? "structure" : "polish";
+    guildId = pendingPaywallGuild.get(interaction.user.id);
+  } else {
+    return false;
+  }
+
+  const guild = guildId ? client.guilds.cache.get(guildId) : null;
+  if (!guild) {
+    await interaction
+      .reply({ ephemeral: true, content: "⚠️ Couldn't find your server. Run `/setup run` again." })
+      .catch(() => {});
+    return true;
+  }
+
+  let owner;
+  try {
+    owner = await guild.fetchOwner();
+  } catch (err) {
+    log(`fetchOwner failed for freemium button: ${err.message}`);
+    await interaction.reply({ ephemeral: true, content: "⚠️ Couldn't verify server ownership." }).catch(() => {});
+    return true;
+  }
+  if (interaction.user.id !== owner.id) {
+    await interaction.reply({ ephemeral: true, content: "Owner only." }).catch(() => {});
+    return true;
+  }
+
+  if (action === "structure") {
+    await interaction.reply({ ephemeral: true, content: "🏗️ Applying your free structure…" }).catch(() => {});
+    try {
+      await applyStructureForGuild(guild, owner.user);
+      await interaction.followUp({ ephemeral: true, content: "✅ Free structure applied! Check your server." }).catch(() => {});
+    } catch (err) {
+      log(`Apply structure button failed: ${err.message}`);
+      await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` }).catch(() => {});
+    }
+    return true;
+  }
+
+  // polish unlock
+  await interaction.reply({ ephemeral: true, content: "🔓 Checking unlock status…" }).catch(() => {});
+  try {
+    const ok = await applyPolishForInteraction(interaction, guild, owner.user);
+    if (ok) {
+      await interaction.followUp({ ephemeral: true, content: "✅ Unlock complete — polish applied!" }).catch(() => {});
+    }
+  } catch (err) {
+    log(`Unlock button failed: ${err.message}`);
+    await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` }).catch(() => {});
+  }
+  return true;
+}
+
+/**
  * Handle /setup interactions with cooldowns and confirmations.
  * @param {import('discord.js').Interaction} interaction
  * @param {import('discord.js').Client} client
@@ -170,68 +364,13 @@ export async function handleSetupInteraction(interaction, client) {
 
   const sub = interaction.options.getSubcommand();
 
-  // --- Entitlement Check ---
-  // PREMIUM_SKU_ID     = Basic Build Pack ($3.99 consumable, one build)
-  // SUBSCRIPTION_SKU_ID = Pro Builder ($6.99/mo, unlimited builds)
-  const basicPackSkuId = process.env.PREMIUM_SKU_ID;
-  const subSkuId = process.env.SUBSCRIPTION_SKU_ID;
-
-  const activeEntitlements = interaction.entitlements;
-  const hasSub = subSkuId
-    ? activeEntitlements.some(e => e.skuId === subSkuId)
-    : false;
-  const basicPackEntitlement = basicPackSkuId
-    ? activeEntitlements.find(e => e.skuId === basicPackSkuId && !e.consumed)
-    : null;
-  const hasBasicPack = !!basicPackEntitlement;
-
-  const earlyStatus = getEarlyAdopterStatus(interaction.guild.id);
-  const isEarlyAdopter = earlyStatus.onList;
-  const hasFreeBuildLeft = earlyStatus.hasFreeBuildLeft;
-
-  // isPremium = has subscription OR has unconsumed basic build pack OR has early adopter free build left
-  const isPremium = hasSub || hasBasicPack || hasFreeBuildLeft;
-  // isSubscriber = recurring sub only (unlocks presets)
-  const isSubscriber = hasSub;
-
-  const isOwner = process.env.BOT_OWNER_ID && interaction.user.id === process.env.BOT_OWNER_ID;
+  const isOwner = isBotOwner(interaction.user.id);
 
   if (sub === "run") {
     const preset = interaction.options.getString("preset");
 
-    // Presets require a subscription (not just a one-time pack), except for the bot owner or the free support preset
-    if (preset && preset !== "justthebuilder" && preset !== "justthetip" && !isSubscriber && !isOwner) {
-      return interaction.reply({
-        ephemeral: true,
-        content: [
-          "⚡ **Fast-Track Presets are a Pro Builder feature.**",
-          "Subscribe for $6.99/mo for unlimited rebuilds + all presets.",
-          "",
-          "Or run `/setup run` (no preset) with a **Basic Build Pack** ($3.99 one-time) for a fully AI-customized build.",
-          "",
-          "👉 Check my bot profile to upgrade!"
-        ].join("\n")
-      });
-    }
-
-    // Core /setup run requires EITHER a subscription, basic pack, unused early adopter free build, or being the bot owner
-    if (!isPremium && !isOwner) {
-      const message = [
-        "🔒 **You need a pack to run the server builder.**",
-        "",
-        "**Basic Build Pack** — $3.99 (one complete server setup)",
-        "**Pro Builder** — $6.99/mo (unlimited rebuilds + presets)",
-        ""
-      ];
-      if (isEarlyAdopter) {
-        message.push("⚠️ *Note: Your Early Adopter free build has already been used for this server.*", "");
-      }
-      message.push("👉 Check my bot profile to get started!");
-      return interaction.reply({
-        ephemeral: true,
-        content: message.join("\n")
-      });
-    }
+    // /setup run is free: the interview + free structure never require a pack/sub upfront.
+    // Presets are also free — they only fast-track interview answers.
 
     // Check cooldowns
     const now = Date.now();
@@ -247,7 +386,10 @@ export async function handleSetupInteraction(interaction, client) {
     }
     serverCooldowns.set(interaction.guild.id, now);
     userCooldowns.set(interaction.user.id, now);
-    await interaction.reply({ ephemeral: true, content: preset ? `🚀 Launching **${preset}** quick-setup...` : "Launching interview..." });
+    await interaction.reply({
+      ephemeral: true,
+      content: preset ? `🚀 Launching **${preset}**…` : "Launching free interview…"
+    });
     try {
       if (!preset) {
         try {
@@ -258,29 +400,26 @@ export async function handleSetupInteraction(interaction, client) {
           return;
         }
       }
-      const buildSuccess = await runInterview(owner.user, interaction.guild, client, preset, isPremium || isOwner);
-      // Consume the entitlement or early adopter free build after a successful build
-      if (buildSuccess && !isOwner) {
-        if (hasBasicPack && basicPackEntitlement) {
-          try {
-            await interaction.client.application.consumeEntitlement(basicPackEntitlement.id);
-            log(`Consumed entitlement ${basicPackEntitlement.id} for user ${interaction.user.id}`);
-          } catch (consumeErr) {
-            log(`Failed to consume entitlement: ${consumeErr.message}`);
-          }
-        } else if (!hasSub && hasFreeBuildLeft) {
-          try {
-            const cfg = loadGuildConfig(interaction.guild.id);
-            saveGuildConfig(interaction.guild.id, { ...cfg, earlyAdopterFreeBuildUsed: true });
-            log(`Marked early adopter free build as used for guild ${interaction.guild.id}`);
-          } catch (saveErr) {
-            log(`Failed to save early adopter status: ${saveErr.message}`);
-          }
-        }
+      const result = await runInterview(owner.user, interaction.guild, client, preset, false);
+      if (!result?.ok) {
+        await interaction.followUp({ ephemeral: true, content: "Interview did not complete." });
+        return;
       }
+      await sendFreemiumPaywall(owner.user, interaction.guild);
     } catch (err) {
       log(`runInterview error: ${err.message}`);
       await interaction.followUp({ ephemeral: true, content: `❌ Something went wrong during setup: ${err.message}` });
+    }
+  } else if (sub === "unlock") {
+    await interaction.reply({ ephemeral: true, content: "🔓 Checking unlock status…" });
+    try {
+      const ok = await applyPolishForInteraction(interaction, interaction.guild, owner.user);
+      if (ok) {
+        await interaction.followUp({ ephemeral: true, content: "✅ Unlock complete — polish applied! Check your DMs for details." });
+      }
+    } catch (err) {
+      log(`unlock failed: ${err.message}`);
+      await interaction.followUp({ ephemeral: true, content: `❌ Unlock failed: ${err.message}` });
     }
   } else if (sub === "nuke") {
     const confirmed = await confirmDestructive(interaction, {
@@ -319,6 +458,15 @@ export async function handleSetupInteraction(interaction, client) {
       log(`Nuke done but DM failed: ${err.message}`);
     }
   } else if (sub === "post-messages") {
+    const access = canApplyPolish(interaction, interaction.guild);
+    const polished = guildHasPolishApplied(interaction.guild.id);
+    if (!access.allowed && !polished && !isBotOwner(interaction.user.id)) {
+      return interaction.reply({
+        ephemeral: true,
+        content: "💎 That command needs a completed full unlock ($0.99 pack) on this server.",
+      });
+    }
+
     const filePath = path.resolve("data", "blueprints", `${interaction.guild.id}.json`);
     const cfg = loadGuildConfig(interaction.guild.id);
     const bp = cfg.lastBlueprint || (fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, "utf-8")) : null);
@@ -342,6 +490,15 @@ export async function handleSetupInteraction(interaction, client) {
       await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` });
     }
   } else if (sub === "ticket-panel") {
+    const access = canApplyPolish(interaction, interaction.guild);
+    const polished = guildHasPolishApplied(interaction.guild.id);
+    if (!access.allowed && !polished && !isBotOwner(interaction.user.id)) {
+      return interaction.reply({
+        ephemeral: true,
+        content: "💎 That command needs a completed full unlock ($0.99 pack) on this server.",
+      });
+    }
+
     await interaction.reply({ ephemeral: true, content: "Posting support ticket panel…" });
     try {
       const { getTicketConfig, saveTicketConfig, buildTicketsConfigFromInterview } = await import(
@@ -436,8 +593,13 @@ export async function handleSetupInteraction(interaction, client) {
 
     await interaction.followUp({ ephemeral: true, content: results.join('\n') });
   } else if (sub === 'edit-message') {
-    if (!isPremium) {
-      return interaction.reply({ ephemeral: true, content: "💎 **Premium Feature**\nEditing bot messages is restricted to premium supporters." });
+    const access = canApplyPolish(interaction, interaction.guild);
+    const polished = guildHasPolishApplied(interaction.guild.id);
+    if (!access.allowed && !polished && !isBotOwner(interaction.user.id)) {
+      return interaction.reply({
+        ephemeral: true,
+        content: "💎 That command needs a completed full unlock ($0.99 pack) on this server.",
+      });
     }
 
     const channel = interaction.options.getChannel('channel');

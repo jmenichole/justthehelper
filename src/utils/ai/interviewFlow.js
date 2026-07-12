@@ -1,6 +1,6 @@
 import { askAI } from "./gateway.js";
 import { validateBlueprint, buildRepairPrompt, formatValidationErrors } from "./schemas.js";
-import { applyBlueprint } from "../applyBlueprint.js";
+import { persistBlueprintOnly } from "../applyBlueprint.js";
 import { log } from "../logger.js";
 import {
   A,
@@ -8,11 +8,9 @@ import {
   PRESET_ANSWERS,
   SUGGESTION_PACKS,
   buildInterviewBrief,
-  formatCustomRequest,
   mapRuleTemplateChoice,
   parseYes
 } from "./interviewConfig.js";
-import { runPostBuildSurvey } from "./postBuildSurvey.js";
 import {
   applyBranding,
   applyExtras,
@@ -138,30 +136,24 @@ export async function runInterview(user, guild, client, preset = null, isPremium
         await dm.send(
           "❌ Support preset blueprint invalid:\n" + formatValidationErrors(validation.errors)
         );
-        return false;
+        return { ok: false };
       }
       blueprint.lastPreset = "justthebuilder";
-      await dm.send(
-        "🔨 Building now — roles → channels → **embeds** (welcome / rules / FAQ / tickets) → **pin rules** → **ticket category menu**…"
-      );
-      const { metrics } = await applyBlueprint(guild, blueprint, { ownerUser: user });
+      persistBlueprintOnly(guild.id, blueprint);
       saveGuildConfig(guild.id, {
         ...loadGuildConfig(guild.id),
         lastBlueprint: blueprint,
         tickets: blueprint.tickets,
-        lastPreset: "justthebuilder",
-        builtAt: Date.now()
+        lastPreset: "justthebuilder"
       });
-      await runPostBuildSurvey(user, guild, client, {
-        preset: "justthebuilder",
-        customRequest: null,
-        metrics
-      });
-      return true;
+      await dm.send(
+        "✅ Blueprint ready. Choose **Apply free structure** or **Unlock full setup — $0.99** next."
+      );
+      return { ok: true, blueprint };
     } catch (err) {
       log(`justthebuilder preset failed: ${err.message}`);
       await dm.send(`❌ Support preset build failed: ${err.message}`);
-      return false;
+      return { ok: false };
     }
   }
 
@@ -278,7 +270,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
     await user.send(
       "❌ Could not produce a valid blueprint.\n" + formatValidationErrors(validation.errors)
     );
-    return false;
+    return { ok: false };
   }
 
   applyBranding(blueprint, answers);
@@ -288,7 +280,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
   applyTicketsToBlueprint(blueprint, answers, { categoriesAnswer: ticketCategoriesAnswer, preset });
 
   const FREE_LIMIT = 20;
-  if (!isPremium && blueprint.categories) {
+  if (blueprint.categories) {
     let count = 0;
     let truncated = false;
     for (const catName of Object.keys(blueprint.categories)) {
@@ -307,7 +299,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
     }
     if (truncated) {
       await user.send(
-        `⚠️ Free tier capped at ${FREE_LIMIT} channels. Upgrade for unlimited layouts.`
+        `⚠️ Free structure capped at ${FREE_LIMIT} channels. Unlock ($0.99) for polish on this layout.`
       );
     }
   }
@@ -335,7 +327,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       selectedRuleTemplate
     );
 
-    await user.send("📋 **Content preview** (posted automatically during build):");
+    await user.send("📋 **Content preview** (posted when you unlock polish):");
     if (injectedRules && ruleTemplate) {
       await user.send(
         `**${ruleTemplate.title}**\n${ruleTemplate.rules.map((r, i) => `${i + 1}. ${r}`).join("\n")}\n\n${ruleTemplate.footer}`
@@ -347,7 +339,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       );
     }
     await user.send(
-      "Reply **continue** to build, or **edit** for tips on changing copy after build."
+      "Reply **continue** to finish the interview, or **edit** for tips on changing copy later."
     );
     try {
       const editChoice = await dm.awaitMessages({
@@ -358,7 +350,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       const choice = editChoice.first()?.content?.toLowerCase() || "continue";
       if (choice.includes("edit")) {
         await user.send(
-          "💡 Embeds post during build. Tweak in-channel after, use `/setup edit-message` (Pro), or `/setup nuke` + `/setup run` to rebuild."
+          "💡 Embeds post when you unlock polish. Tweak in-channel after, use `/setup edit-message`, or `/setup nuke` + `/setup run` to rebuild."
         );
       }
     } catch {}
@@ -368,18 +360,16 @@ export async function runInterview(user, guild, client, preset = null, isPremium
     );
   }
 
-  await user.send("✨ Building your server now (channels → embeds → finish)…");
   try {
-    const { metrics } = await applyBlueprint(guild, blueprint, { ownerUser: user });
-    await runPostBuildSurvey(user, guild, client, {
-      preset: preset || blueprint.lastPreset || null,
-      customRequest: formatCustomRequest(answers[A.CUSTOM]),
-      metrics
-    });
-    return true;
+    persistBlueprintOnly(guild.id, blueprint);
   } catch (err) {
-    log(`Build failed: ${err.message}`);
-    await user.send(`❌ Build failed: ${err.message}`);
-    return false;
+    log(`Persist blueprint failed: ${err.message}`);
+    await user.send(`❌ Failed to save your blueprint: ${err.message}`);
+    return { ok: false };
   }
+
+  await user.send(
+    "✅ Interview complete! Your blueprint is saved.\nChoose **Apply free structure** or **Unlock full setup — $0.99** next."
+  );
+  return { ok: true, blueprint };
 }

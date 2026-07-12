@@ -2,6 +2,9 @@
  * Discord monetization / access helpers.
  */
 
+import { hasGrandfatherFullLeft } from "./grandfather.js";
+import { loadGuildConfig } from "./storage/guildConfig.js";
+
 export function isBotOwner(userId) {
   const ownerId = process.env.BOT_OWNER_ID;
   return Boolean(ownerId && userId === ownerId);
@@ -45,4 +48,39 @@ export async function canOpenSupportTicket(client, userId, interactionEntitlemen
     return { allowed: true, reason: "pro" };
   }
   return { allowed: false, reason: "pro_required" };
+}
+
+export function findUnconsumedBasicPack(entitlements) {
+  const sku = process.env.PREMIUM_SKU_ID;
+  if (!sku || !entitlements) return null;
+  const list =
+    typeof entitlements.values === "function"
+      ? [...entitlements.values()]
+      : [...entitlements];
+  return list.find((e) => e.skuId === sku && !e.consumed) || null;
+}
+
+/**
+ * @returns {{ allowed: boolean, reason: 'owner'|'pack'|'manual_grant'|'grandfather'|'denied' }}
+ */
+export function canApplyPolish(interaction, guild) {
+  if (isBotOwner(interaction.user.id)) return { allowed: true, reason: "owner" };
+  if (findUnconsumedBasicPack(interaction.entitlements)) {
+    return { allowed: true, reason: "pack" };
+  }
+  if (guild) {
+    const cfg = loadGuildConfig(guild.id);
+    if (cfg.manualPolishGrant === true) {
+      return { allowed: true, reason: "manual_grant" };
+    }
+    if (hasGrandfatherFullLeft(guild)) {
+      return { allowed: true, reason: "grandfather" };
+    }
+  }
+  return { allowed: false, reason: "denied" };
+}
+
+export function guildHasPolishApplied(guildId) {
+  const cfg = loadGuildConfig(guildId);
+  return Boolean(cfg.polishAppliedAt);
 }
