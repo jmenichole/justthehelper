@@ -1,64 +1,68 @@
 # Privacy Policy
-_Last Updated: 11.29.25_
+_Last Updated: 2026-07-12_
 
-This Privacy Policy explains how **JustTheBuilder** (“we”, “our”) collects and uses information.
+This Privacy Policy explains how **JustTheHelper** (“we”, “our”) collects and uses information.
 
 ## 1. What We Collect
-Only what is required for server setup:
-- Server name + ID  
-- Channel names + IDs  
-- Role names + IDs  
-- Your Discord user ID  
-- Setup interview answers  
 
-We DO NOT collect:
-- Messages from other users  
-- Server chat logs  
-- Private conversations  
-- Payment info  
+Only what is required to run the bot:
+
+- Discord server (guild) ID and name  
+- Channel and thread IDs used for welcome or tickets  
+- Role IDs configured for verify or staff  
+- Your Discord user ID (for reminders, tickets, and admin actions)  
+- Reminder text and due times you schedule  
+- Ticket metadata (opener, claim status, thread ID)  
+
+We do **not** collect:
+
+- General server chat logs  
+- Messages outside ticket threads or bot interactions  
+- Payment card details (billing is handled by Discord)  
 - IP addresses  
 
-## 2. AI Interactions
-We send your interview responses to our AI provider (OpenAI or similar) ONLY to generate your server blueprint.  
-We do not send chat logs or private messages.
+## 2. What We Do Not Store Long-Term
 
-## 3. What We Do Not Store
-We do not store:
-- Server messages  
-- Personal data  
-- Sensitive info  
+We do not build a profile of your community or sell data. Operational logs, if any, are limited and purged on a reasonable schedule.
 
-If logs exist for debugging, they are anonymized or purged regularly.
+## 3. How We Use Your Data
 
-## 4. How We Use Your Data
-- To generate your server setup  
-- To create roles, channels, permissions  
-- To improve the bot  
+- To post welcome flows, grant verify roles, and send optional welcome DMs  
+- To deliver personal reminders via DM  
+- To create and manage private-thread support tickets  
+- To operate billing checks via Discord’s entitlements API  
+- To improve reliability and fix errors  
 
 We never sell your data.
 
-## 5. Third-Party Services
-We may use:
-- OpenAI  
-- Discord API  
-- Billing processors (Stripe or Discord SKUs)
+## 4. Third-Party Services
+
+We use:
+
+- **Discord** — hosting, API, and subscription billing  
+- **Fly.io** — application hosting (production)  
 
 Each provider has its own privacy policy.
 
-## 6. Security
+## 5. Security
+
 We take reasonable steps to protect your data, but no system is 100% secure.
 
-## 7. Children
+## 6. Children
+
 You must be 13+ to use Discord and this bot.
 
-## 8. Your Rights
-You may:
-- Request deletion of stored data  
-- Request access to your retained data  
-- Remove the bot at any time  
+## 7. Your Rights
 
-## 9. Changes
+You may:
+
+- Request deletion of stored configuration and reminder data  
+- Remove the bot from your server at any time  
+
+## 8. Changes
+
 We may update this policy. Continued use means acceptance.
 
-## 10. Contact
+## 9. Contact
+
 privacy@mischiefmanager.io
