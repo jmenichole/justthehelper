@@ -19,8 +19,8 @@ import {
   PermissionFlagsBits
 } from "discord.js";
 
-// userId -> guildId; tracks who a pending freemium paywall DM belongs to so the
-// jtb_apply_structure / jtb_unlock_polish button handlers know which guild to touch.
+// Optional userId -> guildId cache for freemium paywall DMs; guildId is also embedded
+// in button customIds so clicks survive bot restarts.
 const pendingPaywallGuild = new Map();
 
 // In-memory cooldown stores
@@ -160,8 +160,8 @@ async function wipeServer(guild) {
 
 /**
  * DM the freemium paywall summary + Apply free structure / Unlock full ($0.99) buttons
- * after an interview (or onboarding preview) completes. Also remembers which guild the
- * buttons should act on, keyed by user id, since the buttons arrive via DM (no guild context).
+ * after an interview (or onboarding preview) completes. Guild id is embedded in each
+ * button customId so DM clicks work after a bot restart.
  * @param {import('discord.js').User} user
  * @param {import('discord.js').Guild} guild
  */
@@ -180,8 +180,14 @@ export async function sendFreemiumPaywall(user, guild) {
       ].join("\n")
     );
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("jtb_apply_structure").setLabel("Apply free structure").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("jtb_unlock_polish").setLabel("Unlock full setup — $0.99").setStyle(ButtonStyle.Primary)
+    new ButtonBuilder()
+      .setCustomId(`jtb_apply_structure:${guild.id}`)
+      .setLabel("Apply free structure")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`jtb_unlock_polish:${guild.id}`)
+      .setLabel("Unlock full setup — $0.99")
+      .setStyle(ButtonStyle.Primary)
   );
 
   try {
@@ -253,17 +259,32 @@ export async function applyPolishForInteraction(interaction, guild, ownerUser) {
 
 /**
  * Handle the jtb_apply_structure / jtb_unlock_polish DM buttons sent by sendFreemiumPaywall.
- * Resolves the target guild from the in-memory map and verifies the clicker is the guild owner.
+ * Guild id is parsed from the button customId (`action:guildId`); falls back to the
+ * in-memory cache for legacy buttons without an embedded id.
  * @param {import('discord.js').Interaction} interaction
  * @param {import('discord.js').Client} client
  * @returns {Promise<boolean>} true if this interaction was handled
  */
 export async function handleFreemiumButtons(interaction, client) {
   if (!interaction.isButton()) return false;
-  const id = interaction.customId;
-  if (id !== "jtb_apply_structure" && id !== "jtb_unlock_polish") return false;
 
-  const guildId = pendingPaywallGuild.get(interaction.user.id);
+  const id = interaction.customId;
+  let action = null;
+  let guildId = null;
+
+  if (id.startsWith("jtb_apply_structure:")) {
+    action = "structure";
+    guildId = id.split(":")[1];
+  } else if (id.startsWith("jtb_unlock_polish:")) {
+    action = "polish";
+    guildId = id.split(":")[1];
+  } else if (id === "jtb_apply_structure" || id === "jtb_unlock_polish") {
+    action = id === "jtb_apply_structure" ? "structure" : "polish";
+    guildId = pendingPaywallGuild.get(interaction.user.id);
+  } else {
+    return false;
+  }
+
   const guild = guildId ? client.guilds.cache.get(guildId) : null;
   if (!guild) {
     await interaction
@@ -285,7 +306,7 @@ export async function handleFreemiumButtons(interaction, client) {
     return true;
   }
 
-  if (id === "jtb_apply_structure") {
+  if (action === "structure") {
     await interaction.reply({ ephemeral: true, content: "🏗️ Applying your free structure…" }).catch(() => {});
     try {
       await applyStructureForGuild(guild, owner.user);
@@ -297,7 +318,7 @@ export async function handleFreemiumButtons(interaction, client) {
     return true;
   }
 
-  // jtb_unlock_polish
+  // polish unlock
   await interaction.reply({ ephemeral: true, content: "🔓 Checking unlock status…" }).catch(() => {});
   try {
     const ok = await applyPolishForInteraction(interaction, guild, owner.user);
