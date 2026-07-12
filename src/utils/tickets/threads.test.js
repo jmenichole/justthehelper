@@ -14,4 +14,9 @@ describe("ticket open map", () => {
     assert.equal(findOpenTicketForUser(state, "u1"), "t1");
     assert.equal(findOpenTicketForUser(state, "u3"), null);
   });
+
+  it("returns null when open map is empty or missing", () => {
+    assert.equal(findOpenTicketForUser({ counter: 0, open: {} }, "u1"), null);
+    assert.equal(findOpenTicketForUser({ counter: 0 }, "u1"), null);
+  });
 });

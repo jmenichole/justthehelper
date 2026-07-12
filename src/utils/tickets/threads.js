@@ -92,11 +92,42 @@ async function denyPaywall(interaction) {
   } catch {}
 }
 
+const STAFF_ADD_CAP = 15;
+
+/** Best-effort: add staff-role members to a private ticket thread (capped). */
+async function addStaffMembersToThread(thread, interaction, staffRoleIds) {
+  const roleIds = staffRoleIds || [];
+  if (!roleIds.length) return;
+
+  let members;
+  try {
+    members = await interaction.guild.members.fetch();
+  } catch (err) {
+    log(
+      `ticket_staff_add_skipped: need Manage Threads or GuildMembers intent (${err.message})`
+    );
+    return;
+  }
+
+  let added = 0;
+  for (const member of members.values()) {
+    if (added >= STAFF_ADD_CAP) break;
+    if (member.user.bot || member.id === interaction.user.id) continue;
+    if (!roleIds.some((id) => member.roles.cache.has(id))) continue;
+    try {
+      await thread.members.add(member.id);
+      added += 1;
+    } catch {
+      // Individual add may fail without Manage Threads; role mentions still notify.
+    }
+  }
+}
+
 async function openTicket(interaction, client) {
-  // Guild entitlement only (no owner bypass on open — members must be on a paying server).
+  // Owner bypass first (canUseTickets); everyone else needs guild entitlement.
   const guildGate = await canUseTickets(client, {
     guildId: interaction.guildId,
-    userId: null,
+    userId: interaction.user.id,
     interactionEntitlements: interaction.entitlements,
   });
   if (!guildGate.allowed) {
@@ -145,6 +176,8 @@ async function openTicket(interaction, client) {
     });
     return true;
   }
+
+  await addStaffMembersToThread(thread, interaction, cfg.staffRoleIds);
 
   state.open[thread.id] = { userId: interaction.user.id, createdAt: Date.now() };
   saveTicketState(interaction.guildId, state);
@@ -197,6 +230,11 @@ async function closeTicket(interaction) {
   delete state.open[interaction.channelId];
   saveTicketState(interaction.guildId, state);
   await interaction.reply({ content: "Ticket closed." });
+  try {
+    await interaction.channel.setLocked(true);
+  } catch (err) {
+    log(`ticket_lock_failed: ${err.message}`);
+  }
   try {
     await interaction.channel.setArchived(true);
   } catch (err) {
