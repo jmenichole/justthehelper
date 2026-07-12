@@ -51,6 +51,9 @@ const client = new Client({
 client.once("clientReady", async () => {
   log(`Ready as ${client.user.tag} | Guilds: ${client.guilds.cache.size}`);
 
+  const { initOps } = await import("./ops.js");
+  initOps(client);
+
   // Initialize early adopters list on first boot
   const dataDir = path.resolve("data");
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -95,26 +98,66 @@ client.on("guildDelete", (guild) => {
 });
 
 client.on("interactionCreate", async (i) => {
-  if (i.isChatInputCommand()) {
-    const { logStaffSlashCommand } = await import("./staffLog.js");
-    logStaffSlashCommand(i);
+  try {
+    if (i.isChatInputCommand()) {
+      const { logStaffSlashCommand } = await import("./staffLog.js");
+      logStaffSlashCommand(i);
+    }
+
+    const { handleTicketInteraction } = await import("./tickets/handler.js");
+    if (await handleTicketInteraction(i, client)) return;
+
+    const { handleAnnounceInteraction } = await import("./announce.js");
+    const { handleGrantInteraction } = await import("./grant.js");
+    await handleSetupInteraction(i, client);
+    handleOnboardingComponent(i, client);
+    handlePostBuildButtons(i, client);
+    await handleAnnounceInteraction(i, client);
+    await handleGrantInteraction(i, client);
+  } catch (err) {
+    log(`Interaction error: ${err.message}`);
+    const { postError } = await import("./ops.js");
+    postError({
+      context: `interaction:${i.commandName || i.customId || "unknown"}`,
+      message: err.message || String(err),
+      stack: err.stack,
+    });
+    if (i.isRepliable?.() && !i.replied && !i.deferred) {
+      await i.reply({ ephemeral: true, content: "❌ Something went wrong. Try again." }).catch(() => {});
+    }
   }
+});
 
-  const { handleTicketInteraction } = await import("./tickets/handler.js");
-  if (await handleTicketInteraction(i, client)) return;
+process.on("uncaughtException", async (err) => {
+  console.error("uncaughtException:", err);
+  try {
+    const { postError } = await import("./ops.js");
+    postError({ context: "uncaughtException", message: err.message, stack: err.stack });
+  } catch {}
+});
 
-  const { handleAnnounceInteraction } = await import("./announce.js");
-  const { handleGrantInteraction } = await import("./grant.js");
-  handleSetupInteraction(i, client);
-  handleOnboardingComponent(i, client);
-  handlePostBuildButtons(i, client);
-  handleAnnounceInteraction(i, client);
-  handleGrantInteraction(i, client);
+process.on("unhandledRejection", async (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  console.error("unhandledRejection:", reason);
+  try {
+    const { postError } = await import("./ops.js");
+    postError({ context: "unhandledRejection", message, stack });
+  } catch {}
 });
 
 // DM buyers immediately when a new purchase comes in while the bot is online
 client.on("entitlementCreate", async (entitlement) => {
   log(`New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}`);
+  const basicPackId = process.env.PREMIUM_SKU_ID;
+  const subId = process.env.SUBSCRIPTION_SKU_ID;
+  let skuLabel = String(entitlement.skuId);
+  if (String(entitlement.skuId) === String(basicPackId)) skuLabel = "Basic Build Pack";
+  else if (String(entitlement.skuId) === String(subId)) skuLabel = "Pro Builder Subscription";
+  try {
+    const { postPurchase } = await import("./ops.js");
+    postPurchase({ userId: entitlement.userId, skuId: entitlement.skuId, skuLabel });
+  } catch {}
   try {
     const user = await client.users.fetch(entitlement.userId);
     const { logStaffUsage } = await import("./staffLog.js");
@@ -126,8 +169,6 @@ client.on("entitlementCreate", async (entitlement) => {
       detail: `SKU \`${entitlement.skuId}\` · type ${entitlement.type ?? "?"}`
     });
   } catch {}
-  const basicPackId = process.env.PREMIUM_SKU_ID;
-  const subId = process.env.SUBSCRIPTION_SKU_ID;
   const supportLink = process.env.SUPPORT_SERVER_INVITE || "https://discord.gg/NEePze3rZd";
 
   let message = "";
