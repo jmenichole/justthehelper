@@ -1,7 +1,7 @@
 # JustTheBuilder Freemium ($0.99) Design
 
 **Date:** 2026-07-12  
-**Status:** Draft (pending user review)  
+**Status:** Approved  
 **Repo:** `jmenichole/justthebuilder`  
 **SKU:** Existing Basic Build Pack (`PREMIUM_SKU_ID` / Discord SKU `1444371617319882863`) at **$0.99**
 
