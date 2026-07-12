@@ -19,16 +19,17 @@ export const TicketsCommandData = new SlashCommandBuilder()
 
 export async function handleTicketsCommand(interaction, client) {
   if (!interaction.isChatInputCommand() || interaction.commandName !== "tickets") return false;
+  // Acknowledge early — entitlement fetch + channel.send can exceed Discord's 3s window.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const access = await canUseTickets(client, {
     guildId: interaction.guildId,
     userId: interaction.user.id,
     interactionEntitlements: interaction.entitlements,
   });
   if (!access.allowed) {
-    await interaction.reply({
+    await interaction.editReply({
       content:
         "This server needs JustTheHelper **$1.99/mo** to use tickets (or you must be the bot owner for testing).",
-      flags: MessageFlags.Ephemeral,
     });
     return true;
   }
@@ -42,9 +43,8 @@ export async function handleTicketsCommand(interaction, client) {
       ticketParentChannelId: channel.id,
       staffRoleIds: [role.id],
     });
-    await interaction.reply({
+    await interaction.editReply({
       content: `Tickets parent ${channel}, staff ${role}.`,
-      flags: MessageFlags.Ephemeral,
     });
     return true;
   }
@@ -55,7 +55,7 @@ export async function handleTicketsCommand(interaction, client) {
       ticketPanelChannelId: interaction.channelId,
       ticketPanelMessageId: msg.id,
     });
-    await interaction.reply({ content: "Ticket panel posted.", flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: "Ticket panel posted." });
     try {
       const { postAnalytics } = await import("../ops.js");
       postAnalytics({

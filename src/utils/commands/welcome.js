@@ -68,6 +68,7 @@ export async function handleWelcomeCommand(interaction, client) {
       });
       return true;
     }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const payload = buildWelcomePayload(cfg);
     const msg = await interaction.channel.send(payload);
     saveGuildConfig(interaction.guildId, {
@@ -75,7 +76,7 @@ export async function handleWelcomeCommand(interaction, client) {
       welcomeChannelId: interaction.channelId,
       welcomePanelMessageId: msg.id,
     });
-    await interaction.reply({ content: "Welcome panel posted.", flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: "Welcome panel posted." });
     try {
       const { postAnalytics } = await import("../ops.js");
       postAnalytics({

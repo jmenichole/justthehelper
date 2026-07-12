@@ -1,6 +1,8 @@
 app = 'justthehelper'
 primary_region = 'iad'
 
+# Discord gateway bots must run a single machine (duplicate token connections
+# race on interactions → DiscordAPIError 10062 / 40060).
 [build]
   dockerfile = 'Dockerfile'
 

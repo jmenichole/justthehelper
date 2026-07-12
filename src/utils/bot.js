@@ -2,6 +2,14 @@ import { Client, GatewayIntentBits, Partials, REST, Routes } from "discord.js";
 import dotenv from "dotenv";
 import { handleGuildCreate } from "./events/guildCreate.js";
 import { log } from "./logger.js";
+import { WelcomeCommandData, handleWelcomeCommand } from "./commands/welcome.js";
+import { TicketsCommandData, handleTicketsCommand } from "./commands/tickets.js";
+import { RemindCommandData, handleRemindCommand } from "./commands/remind.js";
+import { handleVerifyButton } from "./welcome/handler.js";
+import { handleTicketInteraction } from "./tickets/handler.js";
+import { initOps, postError, postPurchase } from "./ops.js";
+import { startHealthServer } from "./health.js";
+import { startReminderScanner } from "./reminders/scanner.js";
 
 // Try multiple env locations (root .env first, then src/config/.env)
 const envCandidates = [".env", "src/config/.env"];
@@ -41,19 +49,11 @@ const client = new Client({
 client.once("clientReady", async () => {
   log(`Ready as ${client.user.tag} | Guilds: ${client.guilds.cache.size}`);
 
-  const { initOps } = await import("./ops.js");
   initOps(client);
-
-  const { startHealthServer } = await import("./health.js");
   startHealthServer(client);
-
-  const { startReminderScanner } = await import("./reminders/scanner.js");
   startReminderScanner(client);
 
   try {
-    const { WelcomeCommandData } = await import("./commands/welcome.js");
-    const { TicketsCommandData } = await import("./commands/tickets.js");
-    const { RemindCommandData } = await import("./commands/remind.js");
     const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
     await rest.put(Routes.applicationCommands(client.user.id), {
       body: [WelcomeCommandData, TicketsCommandData, RemindCommandData],
@@ -70,21 +70,24 @@ client.on("guildDelete", (guild) => {
   log(`Bot removed from server: ${guild.name} (${guild.id})`);
 });
 
+function isStaleInteractionError(err) {
+  const code = err?.code ?? err?.rawError?.code;
+  return code === 10062 || code === 40060;
+}
+
 client.on("interactionCreate", async (i) => {
   try {
-    const { handleWelcomeCommand } = await import("./commands/welcome.js");
     if (await handleWelcomeCommand(i, client)) return;
-    const { handleTicketsCommand } = await import("./commands/tickets.js");
     if (await handleTicketsCommand(i, client)) return;
-    const { handleRemindCommand } = await import("./commands/remind.js");
     if (await handleRemindCommand(i)) return;
-    const { handleVerifyButton } = await import("./welcome/handler.js");
     if (await handleVerifyButton(i, client)) return;
-    const { handleTicketInteraction } = await import("./tickets/handler.js");
     if (await handleTicketInteraction(i, client)) return;
   } catch (err) {
+    if (isStaleInteractionError(err)) {
+      log(`Stale interaction ignored: ${err.message}`);
+      return;
+    }
     log(`Interaction error: ${err.message}`);
-    const { postError } = await import("./ops.js");
     postError({
       context: `interaction:${i.commandName || i.customId || "unknown"}`,
       message: err.message || String(err),
@@ -99,7 +102,6 @@ client.on("interactionCreate", async (i) => {
 process.on("uncaughtException", async (err) => {
   console.error("uncaughtException:", err);
   try {
-    const { postError } = await import("./ops.js");
     postError({ context: "uncaughtException", message: err.message, stack: err.stack });
   } catch {}
 });
@@ -109,7 +111,6 @@ process.on("unhandledRejection", async (reason) => {
   const stack = reason instanceof Error ? reason.stack : undefined;
   console.error("unhandledRejection:", reason);
   try {
-    const { postError } = await import("./ops.js");
     postError({ context: "unhandledRejection", message, stack });
   } catch {}
 });
@@ -117,7 +118,6 @@ process.on("unhandledRejection", async (reason) => {
 client.on("entitlementCreate", async (entitlement) => {
   log(`New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}`);
   try {
-    const { postPurchase } = await import("./ops.js");
     const helperSkus = [process.env.HELPER_SKU_ID, process.env.SUBSCRIPTION_SKU_ID].filter(Boolean);
     const skuLabel = helperSkus.includes(entitlement.skuId)
       ? "JustTheHelper $1.99/mo"
