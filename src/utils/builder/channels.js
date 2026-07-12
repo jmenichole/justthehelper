@@ -148,7 +148,24 @@ export async function createChannels(guild, blueprint, roleMap, progressUser, op
 }
 
 /**
+ * Find an existing category channel matching a blueprint category name.
+ * @param {import('discord.js').Guild} guild
+ * @param {string} categoryName
+ * @returns {import('discord.js').CategoryChannel|undefined}
+ */
+function findExistingCategory(guild, categoryName) {
+  const formattedCategoryName = formatChannelName(categoryName, { emojiPrefix: "" }, null);
+  return guild.channels.cache.find(
+    (c) =>
+      c.type === ChannelType.GuildCategory &&
+      (c.name === formattedCategoryName || c.name === categoryName?.toLowerCase?.())
+  );
+}
+
+/**
  * Map blueprint-defined channels to already-existing guild channels by formatted name.
+ * Prefers matching within the correct parent category (found via formatted category name)
+ * to avoid cross-category name collisions, falling back to a guild-wide name match.
  * Used by polish mode to avoid recreating channels built during the free structure pass.
  * @param {import('discord.js').Guild} guild
  * @param {Object} blueprint
@@ -157,12 +174,20 @@ export async function createChannels(guild, blueprint, roleMap, progressUser, op
 export async function mapExistingChannelsFromBlueprint(guild, blueprint) {
   const channelMap = {};
   for (const [categoryName, list] of Object.entries(blueprint.categories || {})) {
+    const categoryChannel = findExistingCategory(guild, categoryName);
+
     for (const chDef of list) {
       const originalName = typeof chDef === "string" ? chDef : chDef.name;
       const formatted = formatChannelName(originalName, blueprint.style, blueprint.branding);
-      const found = guild.channels.cache.find(
-        (c) => c.name === formatted || c.name === originalName?.toLowerCase?.()
-      );
+      const matchesName = (c) => c.name === formatted || c.name === originalName?.toLowerCase?.();
+
+      let found;
+      if (categoryChannel) {
+        found = guild.channels.cache.find((c) => c.parentId === categoryChannel.id && matchesName(c));
+      }
+      if (!found) {
+        found = guild.channels.cache.find(matchesName);
+      }
       if (found) channelMap[channelMapKey(categoryName, originalName)] = found.id;
     }
   }
@@ -191,6 +216,69 @@ export async function applyTopicsAndPermissions(guild, blueprint, channelMap, ro
       }
       await applyChannelPermissions(channel, chDef, roleMap).catch(() => {});
       if (progressUser) await sendProgress(progressUser, `✨ Polished #${channel.name}`);
+    }
+  }
+}
+
+/**
+ * Apply the remaining polish-tier extras that `applyTopicsAndPermissions` doesn't cover:
+ * category-level privacy presets, per-channel webhooks, and thread locks. Runs against
+ * already-existing channels (e.g. from a prior free structure pass), never creates channels.
+ * @param {import('discord.js').Guild} guild
+ * @param {Object} blueprint
+ * @param {Object} channelMap Map of channelMapKey -> channel id (from mapExistingChannelsFromBlueprint)
+ * @param {Object} roleMap
+ * @param {import('discord.js').User} [progressUser]
+ */
+export async function applyPolishExtras(guild, blueprint, channelMap, roleMap, progressUser) {
+  const categoryPrivacy = blueprint.categoryPrivacy || {};
+
+  for (const [categoryName, list] of Object.entries(blueprint.categories || {})) {
+    const catPreset = categoryPrivacy[categoryName];
+    if (catPreset) {
+      const categoryChannel = findExistingCategory(guild, categoryName);
+      if (categoryChannel) {
+        try {
+          await applyCategoryPreset(categoryChannel, catPreset, roleMap);
+          if (progressUser) await sendProgress(progressUser, `🔒 Applied "${catPreset}" preset to ${categoryChannel.name}`);
+        } catch (err) {
+          log(`Category preset failed (${categoryName}): ${err.message}`);
+        }
+      }
+    }
+
+    for (const chDef of list) {
+      if (typeof chDef === "string") continue;
+      const originalName = chDef.name || chDef;
+      const id = channelMap[channelMapKey(categoryName, originalName)];
+      if (!id) continue;
+      const channel = await guild.channels.fetch(id).catch(() => null);
+      if (!channel) continue;
+
+      if (chDef.threadsLocked) {
+        const everyoneId = guild.roles.everyone.id;
+        await channel.permissionOverwrites.edit(everyoneId, {
+          CreatePublicThreads: false,
+          CreatePrivateThreads: false,
+          SendMessagesInThreads: false
+        }).catch(() => {});
+      }
+
+      if (blueprint.webhooks && blueprint.webhooks[originalName]) {
+        const whDef = blueprint.webhooks[originalName];
+        try {
+          const existing = typeof channel.fetchWebhooks === "function"
+            ? await channel.fetchWebhooks().catch(() => null)
+            : null;
+          const already = existing?.find((wh) => wh.name === (whDef.name || originalName));
+          if (!already) {
+            await channel.createWebhook({ name: whDef.name || originalName, avatar: whDef.avatar || undefined });
+            if (progressUser) await sendProgress(progressUser, `🔗 Webhook created for ${channel.name}`);
+          }
+        } catch (err) {
+          log(`Webhook create failed (${channel.name}): ${err.message}`);
+        }
+      }
     }
   }
 }

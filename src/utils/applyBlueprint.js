@@ -1,5 +1,5 @@
 import { createRoles } from "./roles.js";
-import { createChannels, mapExistingChannelsFromBlueprint, applyTopicsAndPermissions } from "./builder/channels.js";
+import { createChannels, mapExistingChannelsFromBlueprint, applyTopicsAndPermissions, applyPolishExtras } from "./builder/channels.js";
 import { postMessages } from "./builder/messages.js";
 import { applyCommunityFeatures } from "./builder/community.js";
 import { log } from "./logger.js";
@@ -50,8 +50,22 @@ export async function applyBlueprint(guild, blueprint, { ownerUser, mode = "full
     if (ownerUser) await sendProgress(ownerUser, "Mapping existing channels…");
     channelMap = await mapExistingChannelsFromBlueprint(guild, blueprint);
 
+    const expectedChannelCount = Object.values(blueprint.categories || {}).reduce((a, arr) => a + arr.length, 0);
+    const mappedChannelCount = Object.keys(channelMap).length;
+    if (mappedChannelCount < expectedChannelCount) {
+      const missingCount = expectedChannelCount - mappedChannelCount;
+      log(`Channel mapping incomplete for guild ${guild.id}: expected ${expectedChannelCount}, mapped ${mappedChannelCount} (missing ${missingCount})`);
+      if (ownerUser) {
+        await sendProgress(
+          ownerUser,
+          `⚠️ Couldn't match ${missingCount} of ${expectedChannelCount} channel(s) from your original structure (renamed/deleted?) — polish will apply to the ${mappedChannelCount} channel(s) found.`
+        );
+      }
+    }
+
     if (ownerUser) await sendProgress(ownerUser, "Polishing channels…");
     await applyTopicsAndPermissions(guild, blueprint, channelMap, roleMap, ownerUser);
+    await applyPolishExtras(guild, blueprint, channelMap, roleMap, ownerUser);
 
     if (ownerUser) await sendProgress(ownerUser, "Posting about/rules/FAQ…");
     messageResults = await postMessages(guild, channelMap, blueprint, ownerUser);
