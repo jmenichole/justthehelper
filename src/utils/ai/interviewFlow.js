@@ -350,7 +350,7 @@ export async function runInterview(user, guild, client, preset = null, isPremium
       const choice = editChoice.first()?.content?.toLowerCase() || "continue";
       if (choice.includes("edit")) {
         await user.send(
-          "💡 Embeds post when you unlock polish. Tweak in-channel after, use `/setup edit-message` (Pro), or `/setup nuke` + `/setup run` to rebuild."
+          "💡 Embeds post when you unlock polish. Tweak in-channel after, use `/setup edit-message`, or `/setup nuke` + `/setup run` to rebuild."
         );
       }
     } catch {}

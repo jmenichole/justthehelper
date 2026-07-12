@@ -155,7 +155,7 @@ client.on("entitlementCreate", async (entitlement) => {
   const subId = process.env.SUBSCRIPTION_SKU_ID;
   let skuLabel = String(entitlement.skuId);
   if (String(entitlement.skuId) === String(basicPackId)) skuLabel = "Basic Build Pack";
-  else if (String(entitlement.skuId) === String(subId)) skuLabel = "Pro Builder Subscription";
+  else if (String(entitlement.skuId) === String(subId)) skuLabel = "Legacy subscription";
   try {
     const { postPurchase } = await import("./ops.js");
     postPurchase({ userId: entitlement.userId, skuId: entitlement.skuId, skuLabel });
@@ -180,26 +180,20 @@ client.on("entitlementCreate", async (entitlement) => {
       "",
       "Your pack is ready to use. Here's how to start:",
       "1. Go to any Discord server **you own**",
-      "2. Run `/setup run`",
-      "3. The bot will DM you a quick interview to customize your server",
-      "4. Sit back — your server will be built in under a minute ⚡",
+      "2. Run `/setup run` — the bot will DM you a quick interview",
+      "3. Run `/setup unlock` to apply roles, permissions, embeds, pins & tickets",
       "",
-      "Your pack covers **one complete server build** (channels, roles, permissions, rules, FAQ, and more).",
+      "Your pack covers **one complete server build** on that server.",
       "",
       `Need help? Join our support server: ${supportLink}`
     ].join("\n");
   } else if (entitlement.skuId === subId) {
     message = [
-      "💎 **You're a Pro Builder subscriber — thank you!**",
+      "🎉 **Thanks for your purchase!**",
       "",
-      "Here's everything that's unlocked for you:",
-      "✅ `/setup run` — unlimited server builds, any time",
-      "✅ `/setup run preset:gaming` — fast-track preset templates (Gaming, Crypto, Content & more)",
-      "✅ `/setup edit-message` — edit bot messages & embeds after your server is built",
-      "✅ **Ticket system** on servers you build (categories + staff role pings)",
-      "",
-      "**To get started:** Go to any server you own and run `/setup run`.",
-      "The bot will DM you to customize your build.",
+      "Your access is active. In any server you own:",
+      "• `/setup run` — interview + free structure",
+      "• `/setup unlock` — apply full polish from your saved blueprint",
       "",
       `Need help? Join our support server: ${supportLink}`
     ].join("\n");

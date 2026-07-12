@@ -3,8 +3,7 @@ import { log } from "../logger.js";
 import { applyBlueprint, loadPersistedBlueprint } from "../applyBlueprint.js";
 import { postMessagesToExistingChannels } from "../builder/messages.js";
 import { loadGuildConfig } from "../storage/guildConfig.js";
-import { getEarlyAdopterStatus } from "../earlyAdopters.js";
-import { canApplyPolish, findUnconsumedBasicPack } from "../entitlements.js";
+import { canApplyPolish, findUnconsumedBasicPack, guildHasPolishApplied, isBotOwner } from "../entitlements.js";
 import { markGrandfatherFullUsed } from "../grandfather.js";
 import { postAnalytics } from "../ops.js";
 import fs from 'fs';
@@ -89,7 +88,7 @@ export const SetupCommandData = {
     {
       type: 1,
       name: "edit-message",
-      description: "💎 Edit a bot message/embed (Premium)",
+      description: "Edit a bot message/embed (requires unlock)",
       options: [
         { type: 7, name: 'channel', description: 'Channel containing the message', required: true },
         { type: 3, name: 'message_id', description: 'ID of the message to edit', required: true },
@@ -357,29 +356,7 @@ export async function handleSetupInteraction(interaction, client) {
 
   const sub = interaction.options.getSubcommand();
 
-  // --- Entitlement Check ---
-  // PREMIUM_SKU_ID     = Basic Build Pack ($3.99 consumable, one build)
-  // SUBSCRIPTION_SKU_ID = Pro Builder ($6.99/mo, unlimited builds)
-  const basicPackSkuId = process.env.PREMIUM_SKU_ID;
-  const subSkuId = process.env.SUBSCRIPTION_SKU_ID;
-
-  const activeEntitlements = interaction.entitlements;
-  const hasSub = subSkuId
-    ? activeEntitlements.some(e => e.skuId === subSkuId)
-    : false;
-  const basicPackEntitlement = basicPackSkuId
-    ? activeEntitlements.find(e => e.skuId === basicPackSkuId && !e.consumed)
-    : null;
-  const hasBasicPack = !!basicPackEntitlement;
-
-  const earlyStatus = getEarlyAdopterStatus(interaction.guild.id);
-  const hasFreeBuildLeft = earlyStatus.hasFreeBuildLeft;
-
-  // isPremium = has subscription OR has unconsumed basic build pack OR has early adopter free build left
-  // (still used to gate /setup edit-message; /setup run itself is always free now)
-  const isPremium = hasSub || hasBasicPack || hasFreeBuildLeft;
-
-  const isOwner = process.env.BOT_OWNER_ID && interaction.user.id === process.env.BOT_OWNER_ID;
+  const isOwner = isBotOwner(interaction.user.id);
 
   if (sub === "run") {
     const preset = interaction.options.getString("preset");
@@ -473,6 +450,15 @@ export async function handleSetupInteraction(interaction, client) {
       log(`Nuke done but DM failed: ${err.message}`);
     }
   } else if (sub === "post-messages") {
+    const access = canApplyPolish(interaction, interaction.guild);
+    const polished = guildHasPolishApplied(interaction.guild.id);
+    if (!access.allowed && !polished && !isBotOwner(interaction.user.id)) {
+      return interaction.reply({
+        ephemeral: true,
+        content: "💎 That command needs a completed full unlock ($0.99 pack) on this server.",
+      });
+    }
+
     const filePath = path.resolve("data", "blueprints", `${interaction.guild.id}.json`);
     const cfg = loadGuildConfig(interaction.guild.id);
     const bp = cfg.lastBlueprint || (fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, "utf-8")) : null);
@@ -496,6 +482,15 @@ export async function handleSetupInteraction(interaction, client) {
       await interaction.followUp({ ephemeral: true, content: `❌ Failed: ${err.message}` });
     }
   } else if (sub === "ticket-panel") {
+    const access = canApplyPolish(interaction, interaction.guild);
+    const polished = guildHasPolishApplied(interaction.guild.id);
+    if (!access.allowed && !polished && !isBotOwner(interaction.user.id)) {
+      return interaction.reply({
+        ephemeral: true,
+        content: "💎 That command needs a completed full unlock ($0.99 pack) on this server.",
+      });
+    }
+
     await interaction.reply({ ephemeral: true, content: "Posting support ticket panel…" });
     try {
       const { getTicketConfig, saveTicketConfig, buildTicketsConfigFromInterview } = await import(
@@ -590,8 +585,13 @@ export async function handleSetupInteraction(interaction, client) {
 
     await interaction.followUp({ ephemeral: true, content: results.join('\n') });
   } else if (sub === 'edit-message') {
-    if (!isPremium) {
-      return interaction.reply({ ephemeral: true, content: "💎 **Premium Feature**\nEditing bot messages is restricted to premium supporters." });
+    const access = canApplyPolish(interaction, interaction.guild);
+    const polished = guildHasPolishApplied(interaction.guild.id);
+    if (!access.allowed && !polished && !isBotOwner(interaction.user.id)) {
+      return interaction.reply({
+        ephemeral: true,
+        content: "💎 That command needs a completed full unlock ($0.99 pack) on this server.",
+      });
     }
 
     const channel = interaction.options.getChannel('channel');
