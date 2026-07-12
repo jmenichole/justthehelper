@@ -1,4 +1,4 @@
-app = 'justthebuilder'
+app = 'justthehelper'
 primary_region = 'iad'
 
 [build]

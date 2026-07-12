@@ -1,36 +1,19 @@
 {
-  "name": "justthebuilder",
+  "name": "justthehelper",
   "version": "1.0.0",
-  "description": "AI-powered Discord server builder bot for automated server setup.",
+  "description": "Discord welcome, reminders, and paid private-thread tickets.",
   "main": "src/bot.js",
   "type": "module",
   "scripts": {
     "start": "node src/bot.js",
     "dev": "nodemon src/bot.js",
-    "simulate": "node scripts/simulate.js",
-    "dry-run": "node scripts/runLocalBlueprint.js data/blueprints/example.json || true",
-    "merge-tickets": "node scripts/mergeTicketCategories.js"
+    "test": "node --test src/**/*.test.js"
   },
   "dependencies": {
-    "@ai-sdk/groq": "^3.0.39",
-    "ai": "^6.0.193",
-    "ajv": "^8.20.0",
-    "ajv-formats": "^2.1.1",
     "discord.js": "^14.26.4",
     "dotenv": "^16.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "minimatch": "10.2.3",
-      "picomatch": "2.3.2"
-    }
-  },
-  "overrides": {
-    "minimatch": "10.2.3",
-    "picomatch": "2.3.2",
-    "brace-expansion": "1.1.13"
   }
 }
