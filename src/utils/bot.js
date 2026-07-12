@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { handleGuildCreate } from "./events/guildCreate.js";
-import { SetupCommandData, handleSetupInteraction } from "./commands/setup.js";
+import { SetupCommandData, handleSetupInteraction, handleFreemiumButtons } from "./commands/setup.js";
 import { handleOnboardingComponent, handlePostBuildButtons } from "./onboarding/flow.js";
 import { log } from "./logger.js";
 
@@ -106,6 +106,8 @@ client.on("interactionCreate", async (i) => {
 
     const { handleTicketInteraction } = await import("./tickets/handler.js");
     if (await handleTicketInteraction(i, client)) return;
+
+    if (await handleFreemiumButtons(i, client)) return;
 
     const { handleAnnounceInteraction } = await import("./announce.js");
     const { handleGrantInteraction } = await import("./grant.js");

@@ -1,6 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
 import { buildPreviewBlueprint } from './preview.js';
-import { applyBlueprint } from '../applyBlueprint.js';
+import { applyBlueprint, persistBlueprintOnly } from '../applyBlueprint.js';
+import { sendFreemiumPaywall } from '../commands/setup.js';
 import { sendProgress } from '../progress.js';
 import { log } from '../logger.js';
 import fs from 'fs';
@@ -151,11 +152,11 @@ export async function handleOnboardingComponent(interaction, client) {
 
   if (interaction.customId === 'jtb_build') {
     const blueprint = buildBlueprintFromAnswers(state.answers);
-    await interaction.reply({ ephemeral: true, content: 'Building…' });
+    await interaction.reply({ ephemeral: true, content: 'Saving your blueprint…' });
     try {
       const guild = client.guilds.cache.get(state.guildId);
-      await applyBlueprint(guild, blueprint, { ownerUser: user });
-      await postCompletionButtons(user, blueprint);
+      persistBlueprintOnly(guild.id, blueprint);
+      await sendFreemiumPaywall(user, guild);
       sessions.delete(userId);
     } catch (err) { log(`Onboarding build failed: ${err.message}`); }
     return; }

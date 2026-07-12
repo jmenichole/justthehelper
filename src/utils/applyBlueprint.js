@@ -222,6 +222,24 @@ function persistBlueprint(guildId, blueprint, metrics) {
 }
 
 /**
+ * Persist just the blueprint JSON (no build metrics) for a guild.
+ * Used by the free interview path, which saves the interview result
+ * before any structure/polish build has run.
+ * @param {string} guildId
+ * @param {Object} blueprint
+ */
+export function persistBlueprintOnly(guildId, blueprint) {
+  try {
+    const bpDir = path.resolve("data", "blueprints");
+    if (!fs.existsSync(bpDir)) fs.mkdirSync(bpDir, { recursive: true });
+    fs.writeFileSync(path.join(bpDir, `${guildId}.json`), JSON.stringify(blueprint, null, 2));
+    log(`Persisted blueprint (no metrics) for guild ${guildId}`);
+  } catch (err) {
+    log(`Persist blueprint only failed: ${err.message}`);
+  }
+}
+
+/**
  * Load a previously persisted blueprint for a guild, if any.
  * @param {string} guildId
  * @returns {Object|null}
