@@ -10,6 +10,7 @@ import {
 } from "discord.js";
 import { loadGuildConfig } from "../storage/guildConfig.js";
 import { canUseTickets } from "../entitlements.js";
+import { ticketPaywallMessage } from "../billing/paywall.js";
 import { log } from "../logger.js";
 
 export const OPEN_ID = "jth_ticket_open";
@@ -76,8 +77,7 @@ export async function handleTicketInteraction(interaction, client) {
 
 async function denyPaywall(interaction) {
   await interaction.reply({
-    content:
-      "Tickets require **JustTheHelper** ($1.99/mo) for this server. An admin can subscribe in the app's store / SKU page.",
+    content: ticketPaywallMessage(),
     flags: MessageFlags.Ephemeral,
   });
   try {

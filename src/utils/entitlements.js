@@ -1,6 +1,8 @@
 /**
  * Discord monetization / access helpers.
  */
+import { guildHasActiveSubscription } from "./billing/subscriptions.js";
+import { usesDiscordBilling, usesKofiBilling } from "./billing/paywall.js";
 
 export function isBotOwner(userId) {
   const ownerId = process.env.BOT_OWNER_ID;
@@ -49,9 +51,19 @@ export function guildHasHelperSubscriptionSync(guildId, entitlements) {
  */
 export async function canUseTickets(client, { guildId, userId, interactionEntitlements }) {
   if (userId && isBotOwner(userId)) return { allowed: true, reason: "owner" };
+
+  if (usesKofiBilling() && guildHasActiveSubscription(guildId)) {
+    return { allowed: true, reason: "kofi" };
+  }
+
   if (guildHasHelperSubscriptionSync(guildId, interactionEntitlements)) {
     return { allowed: true, reason: "interaction" };
   }
+
+  if (!usesDiscordBilling()) {
+    return { allowed: false, reason: "not_entitled" };
+  }
+
   const sku = helperSkuId();
   if (!sku) return { allowed: false, reason: "sku_unconfigured" };
   try {

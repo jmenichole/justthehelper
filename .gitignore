@@ -9,6 +9,7 @@
 # Local / runtime data (never commit secrets or backups)
 data/backups/
 data/tickets/
+data/billing/
 logs/
 
 # Dependencies
