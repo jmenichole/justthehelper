@@ -147,15 +147,21 @@ export function postGuildInstall(guild) {
   });
 }
 
-export function postPurchase({ userId, skuId, skuLabel }) {
+export function postPurchase({ userId, skuId, skuLabel, guildId, extraFields = [] }) {
+  const fields = [
+    { name: "SKU", value: `\`${skuId}\``, inline: true },
+    { name: "Buyer", value: String(userId).includes("@") ? userId : `<@${userId}>`, inline: true },
+    ...extraFields,
+  ];
+  if (guildId) {
+    fields.push({ name: "Guild ID", value: `\`${guildId}\``, inline: true });
+  }
+  const buyerLabel = String(userId).includes("@") ? userId : `<@${userId}>`;
   postAnalytics({
     event: "purchase",
     title: "💰 Purchase",
-    description: `<@${userId}> bought **${skuLabel || skuId}**`,
+    description: `${buyerLabel} bought **${skuLabel || skuId}**`,
     color: COLORS.purchase,
-    fields: [
-      { name: "SKU", value: `\`${skuId}\``, inline: true },
-      { name: "User ID", value: `\`${userId}\``, inline: true },
-    ],
+    fields,
   });
 }

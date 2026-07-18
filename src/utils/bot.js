@@ -5,11 +5,14 @@ import { log } from "./logger.js";
 import { WelcomeCommandData, handleWelcomeCommand } from "./commands/welcome.js";
 import { TicketsCommandData, handleTicketsCommand } from "./commands/tickets.js";
 import { RemindCommandData, handleRemindCommand } from "./commands/remind.js";
+import { SubscribeCommandData, handleSubscribeCommand } from "./commands/subscribe.js";
 import { handleVerifyButton } from "./welcome/handler.js";
 import { handleTicketInteraction } from "./tickets/handler.js";
 import { initOps, postError, postPurchase } from "./ops.js";
 import { startHealthServer } from "./health.js";
 import { startReminderScanner } from "./reminders/scanner.js";
+import { billingProvider } from "./billing/paywall.js";
+import { isKofiConfigured } from "./billing/kofi.js";
 
 // Try multiple env locations (root .env first, then src/config/.env)
 const envCandidates = [".env", "src/config/.env"];
@@ -33,6 +36,19 @@ function assertEnv() {
   }
   const masked = token.slice(0, 6) + "..." + token.slice(-4);
   log(`Token loaded (masked): ${masked}`);
+
+  const helperSku = (process.env.HELPER_SKU_ID || process.env.SUBSCRIPTION_SKU_ID || "").trim();
+  const provider = billingProvider();
+  log(`Billing provider: ${provider}`);
+  if (provider === "none") {
+    log("[WARN] No billing configured — set KOFI_VERIFICATION_TOKEN or HELPER_SKU_ID.");
+  }
+  if ((provider === "kofi" || provider === "both") && !isKofiConfigured()) {
+    log("[WARN] Ko-fi billing selected but KOFI_VERIFICATION_TOKEN is missing.");
+  }
+  if ((provider === "discord" || provider === "both") && !helperSku) {
+    log("[WARN] Discord billing selected but HELPER_SKU_ID is missing.");
+  }
 }
 assertEnv();
 
@@ -56,9 +72,9 @@ client.once("clientReady", async () => {
   try {
     const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
     await rest.put(Routes.applicationCommands(client.user.id), {
-      body: [WelcomeCommandData, TicketsCommandData, RemindCommandData],
+      body: [WelcomeCommandData, SubscribeCommandData, TicketsCommandData, RemindCommandData],
     });
-    log("Registered /welcome /tickets /remind");
+    log("Registered /welcome /subscribe /tickets /remind");
   } catch (err) {
     log(`Command registration failed: ${err.message}`);
   }
@@ -78,6 +94,7 @@ function isStaleInteractionError(err) {
 client.on("interactionCreate", async (i) => {
   try {
     if (await handleWelcomeCommand(i, client)) return;
+    if (await handleSubscribeCommand(i)) return;
     if (await handleTicketsCommand(i, client)) return;
     if (await handleRemindCommand(i)) return;
     if (await handleVerifyButton(i, client)) return;
@@ -116,13 +133,24 @@ process.on("unhandledRejection", async (reason) => {
 });
 
 client.on("entitlementCreate", async (entitlement) => {
-  log(`New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}`);
+  const { usesDiscordBilling } = await import("./billing/paywall.js");
+  if (!usesDiscordBilling()) return;
+
+  log(
+    `New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}` +
+      (entitlement.guildId ? ` guild ${entitlement.guildId}` : "")
+  );
   try {
     const helperSkus = [process.env.HELPER_SKU_ID, process.env.SUBSCRIPTION_SKU_ID].filter(Boolean);
     const skuLabel = helperSkus.includes(entitlement.skuId)
       ? "JustTheHelper $1.99/mo"
       : String(entitlement.skuId);
-    postPurchase({ userId: entitlement.userId, skuId: entitlement.skuId, skuLabel });
+    postPurchase({
+      userId: entitlement.userId,
+      skuId: entitlement.skuId,
+      skuLabel,
+      guildId: entitlement.guildId,
+    });
   } catch {}
 });
 

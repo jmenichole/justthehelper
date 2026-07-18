@@ -18,7 +18,7 @@ We do **not** collect:
 
 - General server chat logs  
 - Messages outside ticket threads or bot interactions  
-- Payment card details (billing is handled by Discord)  
+- Payment card details (billing is handled by Ko-fi or Discord, depending on how you subscribe)  
 - IP addresses  
 
 ## 2. What We Do Not Store Long-Term
@@ -30,7 +30,7 @@ We do not build a profile of your community or sell data. Operational logs, if a
 - To post welcome flows, grant verify roles, and send optional welcome DMs  
 - To deliver personal reminders via DM  
 - To create and manage private-thread support tickets  
-- To operate billing checks via Discord’s entitlements API  
+- To operate billing checks for ticket unlocks (Ko-fi webhooks and/or Discord entitlements)  
 - To improve reliability and fix errors  
 
 We never sell your data.
@@ -39,7 +39,8 @@ We never sell your data.
 
 We use:
 
-- **Discord** — hosting, API, and subscription billing  
+- **Discord** — hosting and API  
+- **Ko-fi** — subscription billing (when you pay via Ko-fi)  
 - **Fly.io** — application hosting (production)  
 
 Each provider has its own privacy policy.

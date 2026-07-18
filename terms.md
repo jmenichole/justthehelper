@@ -30,8 +30,8 @@ You are responsible for reviewing and approving these permissions.
 
 ## 5. Paid Features
 
-Ticket features require an active **$1.99/mo guild subscription** billed through Discord.  
-Refunds follow Discord’s policies and may be issued at our discretion for accidental purchases or technical issues.
+Ticket features require an active **$1.99/mo guild subscription** billed through **Ko-fi** (or Discord, if offered).  
+Refunds follow the payment provider’s policies and may be issued at our discretion for accidental purchases or technical issues.
 
 ## 6. Data Usage
 

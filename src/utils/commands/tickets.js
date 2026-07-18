@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 import { loadGuildConfig, saveGuildConfig } from "../storage/guildConfig.js";
 import { canUseTickets } from "../entitlements.js";
+import { ticketPaywallMessage } from "../billing/paywall.js";
 import { buildTicketPanelPayload } from "../tickets/threads.js";
 
 export const TicketsCommandData = new SlashCommandBuilder()
@@ -27,10 +28,7 @@ export async function handleTicketsCommand(interaction, client) {
     interactionEntitlements: interaction.entitlements,
   });
   if (!access.allowed) {
-    await interaction.editReply({
-      content:
-        "This server needs JustTheHelper **$1.99/mo** to use tickets (or you must be the bot owner for testing).",
-    });
+    await interaction.editReply({ content: ticketPaywallMessage() });
     return true;
   }
   const cfg = loadGuildConfig(interaction.guildId);
