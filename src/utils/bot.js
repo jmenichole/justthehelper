@@ -33,6 +33,11 @@ function assertEnv() {
   }
   const masked = token.slice(0, 6) + "..." + token.slice(-4);
   log(`Token loaded (masked): ${masked}`);
+
+  const helperSku = (process.env.HELPER_SKU_ID || process.env.SUBSCRIPTION_SKU_ID || "").trim();
+  if (!helperSku) {
+    log("[WARN] HELPER_SKU_ID is not set — paid ticket unlocks will be denied until configured.");
+  }
 }
 assertEnv();
 
@@ -116,13 +121,21 @@ process.on("unhandledRejection", async (reason) => {
 });
 
 client.on("entitlementCreate", async (entitlement) => {
-  log(`New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}`);
+  log(
+    `New entitlement: SKU ${entitlement.skuId} for user ${entitlement.userId}` +
+      (entitlement.guildId ? ` guild ${entitlement.guildId}` : "")
+  );
   try {
     const helperSkus = [process.env.HELPER_SKU_ID, process.env.SUBSCRIPTION_SKU_ID].filter(Boolean);
     const skuLabel = helperSkus.includes(entitlement.skuId)
       ? "JustTheHelper $1.99/mo"
       : String(entitlement.skuId);
-    postPurchase({ userId: entitlement.userId, skuId: entitlement.skuId, skuLabel });
+    postPurchase({
+      userId: entitlement.userId,
+      skuId: entitlement.skuId,
+      skuLabel,
+      guildId: entitlement.guildId,
+    });
   } catch {}
 });
 
