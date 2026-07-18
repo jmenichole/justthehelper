@@ -3,7 +3,7 @@
 Manual steps for Task 10 (production deploy + smoke). Complete in order; do not enable Discord Discovery until smoke passes.
 
 **App:** `justthehelper` on Fly.io (`https://justthehelper.fly.dev`)  
-**SKU:** Guild subscription at **$1.99/mo** → `HELPER_SKU_ID`  
+**Billing:** Ko-fi membership at **$1.99/mo** → `KOFI_VERIFICATION_TOKEN` + `KOFI_PAGE_URL`  
 **Spec:** [2026-07-12-justthehelper-design.md](superpowers/specs/2026-07-12-justthehelper-design.md)
 
 ---
@@ -54,7 +54,9 @@ fly apps create justthehelper
 fly secrets set \
   DISCORD_TOKEN=<your-bot-token> \
   BOT_OWNER_ID=<your-discord-user-id> \
-  HELPER_SKU_ID=<guild-subscription-sku-id> \
+  BILLING_PROVIDER=kofi \
+  KOFI_VERIFICATION_TOKEN=<kofi-webhook-token-or-KF_API-key> \
+  KOFI_PAGE_URL=https://ko-fi.com/jmenichole \
   OPS_GUILD_ID=<ops-guild-id> \
   OPS_ERROR_CHANNEL_ID=<channel-id> \
   OPS_ANALYTICS_CHANNEL_ID=<channel-id> \
@@ -63,6 +65,17 @@ fly secrets set \
 fly deploy -a justthehelper
 curl https://justthehelper.fly.dev/health
 ```
+
+Or, after filling in `.env` locally:
+
+```bash
+chmod +x scripts/setup-kofi-fly.sh
+./scripts/setup-kofi-fly.sh
+```
+
+**Ko-fi webhook (human):** [ko-fi.com/manage/webhooks](https://ko-fi.com/manage/webhooks) → URL:
+
+`https://justthehelper.fly.dev/webhooks/kofi`
 
 **Expected health response:**
 

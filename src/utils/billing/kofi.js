@@ -13,7 +13,12 @@ export function kofiPageUrl() {
 }
 
 export function kofiVerificationToken() {
-  return (process.env.KOFI_VERIFICATION_TOKEN || process.env.KOFI_TOKEN || "").trim();
+  return (
+    process.env.KOFI_VERIFICATION_TOKEN ||
+    process.env.KOFI_API_KEY ||
+    process.env.KOFI_TOKEN ||
+    ""
+  ).trim();
 }
 
 export function kofiTierName() {
